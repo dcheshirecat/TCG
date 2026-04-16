@@ -8,155 +8,103 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Java 17 ─────────────────────────────────────────────
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           java-version: "17"
           distribution: "temurin"
 
-      # ── 3. Generate Android project from index.html ───────────
-      - name: Generate Android project
+      - name: Scaffold Android project
         run: |
           set -e
+          PKG="com.dcheshirecat.pokecards"
 
-          APP_NAME="PokéCards"
-          PACKAGE="com.dcheshirecat.pokecards"
-          VERSION_CODE=1
-          VERSION_NAME="1.0.0"
+          mkdir -p android/app/src/main/{assets,java/com/dcheshirecat/pokecards}
+          mkdir -p android/app/src/main/res/{mipmap-mdpi,mipmap-hdpi,mipmap-xhdpi,mipmap-xxhdpi,mipmap-xxxhdpi,values}
+          mkdir -p android/gradle/wrapper
 
-          mkdir -p android/app/src/main/assets
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-          mkdir -p android/app/src/main/res/values
-          mkdir -p android/app/src/main/java/com/dcheshirecat/pokecards
-
-          # Copy index.html to assets
           cp index.html android/app/src/main/assets/index.html
 
-          # ── App icon (yellow Poké-ball style) ─────────────────
-          cat > /tmp/gen_icon.py << 'PYEOF'
-          import struct, zlib, base64, os
-
-          def png_chunk(chunk_type, data):
-              c = chunk_type + data
-              crc = struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-              return struct.pack('>I', len(data)) + c + crc
-
-          def make_icon(size):
-              img = []
-              cx = cy = size / 2
-              r = size / 2 - 2
-              for y in range(size):
-                  row = b'\x00'
-                  for x in range(size):
-                      dx, dy = x - cx, y - cy
-                      d = (dx*dx + dy*dy) ** 0.5
-                      if d > r:
-                          row += b'\x00\x00\x00\x00'
-                      elif d < r - 2:
-                          # Top half: yellow; bottom half: white
-                          if y < cy - 4:
-                              row += bytes([255, 215, 0, 255])
-                          elif y > cy + 4:
-                              row += bytes([240, 240, 240, 255])
-                          elif abs(dy) <= 4:
-                              row += bytes([30, 30, 30, 255])
-                          else:
-                              row += bytes([30, 30, 30, 255])
-                      else:
-                          row += bytes([30, 30, 30, 255])
-                  img.append(row)
-
-              raw = b''.join(img)
-              compressed = zlib.compress(raw, 9)
-
-              png = b'\x89PNG\r\n\x1a\n'
-              png += png_chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0))
-              png += png_chunk(b'IDAT', compressed)
-              png += png_chunk(b'IEND', b'')
+          # ── App icon ─────────────────────────────────────────
+          python3 - << 'PYEOF'
+          import struct, zlib
+          def chunk(t,d):
+              c=t+d; return struct.pack('>I',len(d))+c+struct.pack('>I',zlib.crc32(c)&0xffffffff)
+          def icon(sz):
+              cx=cy=sz/2; r=sz/2-2; rows=[]
+              for y in range(sz):
+                  row=b'\x00'
+                  for x in range(sz):
+                      dx,dy=x-cx,y-cy; d=(dx*dx+dy*dy)**0.5
+                      if d>r: row+=b'\x00\x00\x00\x00'
+                      elif d>r-2: row+=bytes([20,20,20,255])
+                      elif y<cy-3: row+=bytes([255,215,0,255])
+                      elif y>cy+3: row+=bytes([240,240,240,255])
+                      else: row+=bytes([20,20,20,255])
+                  rows.append(row)
+              raw=b''.join(rows)
+              png=b'\x89PNG\r\n\x1a\n'
+              png+=chunk(b'IHDR',struct.pack('>IIBBBBB',sz,sz,8,6,0,0,0))
+              png+=chunk(b'IDAT',zlib.compress(raw,9))
+              png+=chunk(b'IEND',b'')
               return png
-
-          sizes = {
-              'mdpi': 48, 'hdpi': 72, 'xhdpi': 96,
-              'xxhdpi': 144, 'xxxhdpi': 192
-          }
-          for density, sz in sizes.items():
-              path = f"android/app/src/main/res/mipmap-{density}/ic_launcher.png"
-              with open(path, 'wb') as f:
-                  f.write(make_icon(sz))
-              print(f"Generated {path} ({sz}x{sz})")
+          for density,sz in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
+              open(f'android/app/src/main/res/mipmap-{density}/ic_launcher.png','wb').write(icon(sz))
           PYEOF
-          python3 /tmp/gen_icon.py
 
-          # ── strings.xml ───────────────────────────────────────
+          # ── res/values ───────────────────────────────────────
           cat > android/app/src/main/res/values/strings.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <string name="app_name">PokéCards!</string>
-          </resources>
+          <resources><string name="app_name">PokéCards!</string></resources>
           EOF
 
-          # ── colors.xml ────────────────────────────────────────
           cat > android/app/src/main/res/values/colors.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="bg">#0f0c29</color>
-          </resources>
+          <resources><color name="bg">#0f0c29</color></resources>
           EOF
 
-          # ── styles.xml ────────────────────────────────────────
           cat > android/app/src/main/res/values/styles.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
-                  <item name="android:windowBackground">@color/bg</item>
-                  <item name="android:statusBarColor">@color/bg</item>
-                  <item name="android:navigationBarColor">@color/bg</item>
-              </style>
+            <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+              <item name="android:windowBackground">@color/bg</item>
+              <item name="android:statusBarColor">@color/bg</item>
+              <item name="android:navigationBarColor">@color/bg</item>
+            </style>
           </resources>
           EOF
 
-          # ── AndroidManifest.xml ───────────────────────────────
+          # ── AndroidManifest ──────────────────────────────────
           cat > android/app/src/main/AndroidManifest.xml << EOF
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="${PACKAGE}">
-
-              <uses-permission android:name="android.permission.INTERNET"/>
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-
-              <application
-                  android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
-                  android:label="@string/app_name"
-                  android:theme="@style/AppTheme"
-                  android:usesCleartextTraffic="false">
-
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:configChanges="orientation|screenSize|keyboardHidden"
-                      android:windowSoftInputMode="adjustResize">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-              </application>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${PKG}">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="@string/app_name"
+                android:theme="@style/AppTheme"
+                android:usesCleartextTraffic="false">
+              <activity
+                  android:name=".MainActivity"
+                  android:exported="true"
+                  android:configChanges="orientation|screenSize|keyboardHidden"
+                  android:windowSoftInputMode="adjustResize">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
+              </activity>
+            </application>
           </manifest>
           EOF
 
-          # ── MainActivity.java ─────────────────────────────────
+          # ── MainActivity.java ────────────────────────────────
           cat > android/app/src/main/java/com/dcheshirecat/pokecards/MainActivity.java << 'EOF'
           package com.dcheshirecat.pokecards;
 
@@ -172,19 +120,14 @@ jobs:
           import android.view.WindowManager;
 
           public class MainActivity extends Activity {
-
               private WebView webView;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-
-                  // Edge-to-edge
                   requestWindowFeature(Window.FEATURE_NO_TITLE);
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
+                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
                   webView = new WebView(this);
                   setContentView(webView);
@@ -196,75 +139,47 @@ jobs:
                   ws.setAllowContentAccess(true);
                   ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
                   ws.setCacheMode(WebSettings.LOAD_DEFAULT);
-                  ws.setMediaPlaybackRequiresUserGesture(false);
 
-                  // Inject native storage bridge
                   webView.addJavascriptInterface(new StorageBridge(this), "AndroidStorage");
-
-                  webView.setWebViewClient(new WebViewClient(){
+                  webView.setWebViewClient(new WebViewClient() {
                       @Override
-                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                          return false;
-                      }
+                      public boolean shouldOverrideUrlLoading(WebView v, String url) { return false; }
                   });
-
                   webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
                   webView.loadUrl("file:///android_asset/index.html");
               }
 
               @Override
               public void onBackPressed() {
-                  if (webView.canGoBack()) {
-                      webView.goBack();
-                  } else {
-                      super.onBackPressed();
-                  }
+                  if (webView.canGoBack()) webView.goBack();
+                  else super.onBackPressed();
               }
 
-              // ── SharedPreferences bridge ─────────────────────
               public static class StorageBridge {
                   private final SharedPreferences prefs;
-
-                  StorageBridge(Activity activity) {
-                      prefs = activity.getSharedPreferences("pokecards_store", Activity.MODE_PRIVATE);
+                  StorageBridge(Activity a) {
+                      prefs = a.getSharedPreferences("pokecards_store", Activity.MODE_PRIVATE);
                   }
-
-                  @JavascriptInterface
-                  public String get(String key) {
-                      return prefs.getString(key, null);
-                  }
-
-                  @JavascriptInterface
-                  public void set(String key, String value) {
-                      prefs.edit().putString(key, value).apply();
-                  }
-
-                  @JavascriptInterface
-                  public void remove(String key) {
-                      prefs.edit().remove(key).apply();
-                  }
+                  @JavascriptInterface public String get(String key) { return prefs.getString(key, null); }
+                  @JavascriptInterface public void set(String key, String value) { prefs.edit().putString(key, value).apply(); }
+                  @JavascriptInterface public void remove(String key) { prefs.edit().remove(key).apply(); }
               }
           }
           EOF
 
-          # ── app/build.gradle ──────────────────────────────────
+          # ── app/build.gradle ─────────────────────────────────
           cat > android/app/build.gradle << EOF
-          plugins {
-              id 'com.android.application'
-          }
-
+          plugins { id 'com.android.application' }
           android {
-              namespace '${PACKAGE}'
+              namespace '${PKG}'
               compileSdk 34
-
               defaultConfig {
-                  applicationId '${PACKAGE}'
+                  applicationId '${PKG}'
                   minSdk 26
                   targetSdk 34
-                  versionCode ${VERSION_CODE}
-                  versionName '${VERSION_NAME}'
+                  versionCode 2
+                  versionName '2.0.0'
               }
-
               signingConfigs {
                   release {
                       storeFile file('keystore.jks')
@@ -273,7 +188,6 @@ jobs:
                       keyPassword 'pokecards123'
                   }
               }
-
               buildTypes {
                   release {
                       signingConfig signingConfigs.release
@@ -281,7 +195,6 @@ jobs:
                       shrinkResources false
                   }
               }
-
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
@@ -289,35 +202,23 @@ jobs:
           }
           EOF
 
-          # ── root settings.gradle ──────────────────────────────
+          # ── Gradle wrapper & root files ───────────────────────
           cat > android/settings.gradle << 'EOF'
           pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
           }
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+              repositories { google(); mavenCentral() }
           }
           rootProject.name = "PokéCards"
           include ':app'
           EOF
 
-          # ── root build.gradle ─────────────────────────────────
           cat > android/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application' version '8.2.0' apply false
-          }
+          plugins { id 'com.android.application' version '8.2.0' apply false }
           EOF
 
-          # ── gradle wrapper ────────────────────────────────────
-          mkdir -p android/gradle/wrapper
           cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
@@ -326,74 +227,56 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
 
-          cat > android/gradlew << 'GRADLEW'
-          #!/bin/sh
-          exec gradle "$@"
-          GRADLEW
+          printf '#!/bin/sh\nexec gradle "$@"\n' > android/gradlew
           chmod +x android/gradlew
 
           echo "✅ Android project scaffolded."
 
-      # ── 4. Generate keystore ───────────────────────────────────
       - name: Generate keystore
         run: |
           keytool -genkey -v \
             -keystore android/app/keystore.jks \
-            -alias pokecards \
-            -keyalg RSA -keysize 2048 \
-            -validity 10000 \
-            -storepass pokecards123 \
-            -keypass  pokecards123 \
-            -dname "CN=PokéCards,O=dcheshirecat,C=US" \
-            -noprompt
+            -alias pokecards -keyalg RSA -keysize 2048 \
+            -validity 10000 -storepass pokecards123 -keypass pokecards123 \
+            -dname "CN=PokéCards,O=dcheshirecat,C=US" -noprompt
 
-      # ── 5. Build release APK ───────────────────────────────────
-      - name: Build release APK
+      - name: Download Gradle & build APK
         working-directory: android
         run: |
-          # Download Gradle 8.4 explicitly
-          GRADLE_VERSION=8.4
-          GRADLE_ZIP="gradle-${GRADLE_VERSION}-bin.zip"
-          GRADLE_URL="https://services.gradle.org/distributions/${GRADLE_ZIP}"
-          GRADLE_DIR="$HOME/.gradle_bin/gradle-${GRADLE_VERSION}"
-
-          if [ ! -f "$GRADLE_DIR/bin/gradle" ]; then
+          VER=8.4
+          ZIP="gradle-${VER}-bin.zip"
+          DIR="$HOME/.gradle_bin/gradle-${VER}"
+          if [ ! -f "$DIR/bin/gradle" ]; then
             mkdir -p "$HOME/.gradle_bin"
-            echo "Downloading Gradle ${GRADLE_VERSION}..."
-            curl -fsSL -o "/tmp/${GRADLE_ZIP}" "${GRADLE_URL}"
-            unzip -q "/tmp/${GRADLE_ZIP}" -d "$HOME/.gradle_bin"
+            curl -fsSL -o "/tmp/${ZIP}" "https://services.gradle.org/distributions/${ZIP}"
+            unzip -q "/tmp/${ZIP}" -d "$HOME/.gradle_bin"
           fi
-
-          export PATH="$GRADLE_DIR/bin:$PATH"
-          gradle --version
-
-          gradle assembleRelease \
-            --no-daemon \
-            --stacktrace \
+          export PATH="$DIR/bin:$PATH"
+          gradle assembleRelease --no-daemon --stacktrace \
             -Dorg.gradle.jvmargs="-Xmx2g"
 
-      # ── 6. Upload APK ─────────────────────────────────────────
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: pokecards-release
+          name: pokecards-v2-release
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
 
-      # ── 7. Summary ────────────────────────────────────────────
       - name: Build summary
         run: |
           APK="android/app/build/outputs/apk/release/app-release.apk"
           if [ -f "$APK" ]; then
             SIZE=$(du -sh "$APK" | cut -f1)
-            echo "## ✅ PokéCards APK Built!" >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ PokéCards v2 APK Built!" >> $GITHUB_STEP_SUMMARY
             echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
             echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| APK size | ${SIZE} |" >> $GITHUB_STEP_SUMMARY
             echo "| Package | com.dcheshirecat.pokecards |" >> $GITHUB_STEP_SUMMARY
-            echo "| Min SDK | 26 (Android 8.0) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Version | 2.0.0 |" >> $GITHUB_STEP_SUMMARY
+            echo "| Min SDK | 26 (Android 8.0+) |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Download the APK from the **Artifacts** section above ☝️" >> $GITHUB_STEP_SUMMARY
+            echo "Download the APK from **Artifacts** above ☝️" >> $GITHUB_STEP_SUMMARY
           else
-            echo "## ❌ Build failed — APK not found" >> $GITHUB_STEP_SUMMARY
+            echo "## ❌ APK not found — check logs" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
