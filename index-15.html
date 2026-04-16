@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0f0c29"/>
+  <title>PokéCards!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body,#root{height:100%;width:100%;background:linear-gradient(160deg,#0f0c29 0%,#302b63 55%,#24243e 100%);font-family:'Nunito',sans-serif;overscroll-behavior:none;}
+    ::-webkit-scrollbar{width:3px;height:3px;}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:99px;}
+    @keyframes bounceIn{0%{transform:scale(0) rotate(-12deg);opacity:0;}60%{transform:scale(1.15) rotate(4deg);}100%{transform:scale(1) rotate(0);opacity:1;}}
+    @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+    @keyframes shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.65;}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  </style>
+</head>
+<body><div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+// ═══════════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════════
+window.storage={
+  get:async k=>{try{if(window.AndroidStorage){const v=window.AndroidStorage.get(k);return v?{key:k,value:v}:null;}}catch(e){}const v=localStorage.getItem(k);return v?{key:k,value:v}:null;},
+  set:async(k,v)=>{try{if(window.AndroidStorage){window.AndroidStorage.set(k,v);return{key:k,value:v};}}catch(e){}localStorage.setItem(k,v);return{key:k,value:v};},
+  delete:async k=>{try{if(window.AndroidStorage)window.AndroidStorage.remove(k);}catch(e){}localStorage.removeItem(k);return{key:k,deleted:true};},
+};
+async function load(k,d){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):d;}catch{return d;}}
+async function save(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}
+
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const API="https://api.pokemontcg.io/v2";
+const STARTING_COINS=600,WIN_COINS=80,DAILY_COINS=50,PRIZE_COUNT=3,HAND_SIZE=5,MAX_BENCH=3;
+
+const TC={Fire:"#FF6B35",Water:"#38BDF8",Grass:"#4ADE80",Lightning:"#FBBF24",Psychic:"#C084FC",Fighting:"#FB923C",Darkness:"#6B7280",Metal:"#94A3B8",Dragon:"#818CF8",Fairy:"#F472B6",Colorless:"#CBD5E1"};
+const TE={Fire:"🔥",Water:"💧",Grass:"🌿",Lightning:"⚡",Psychic:"🔮",Fighting:"👊",Darkness:"🌑",Metal:"⚙️",Dragon:"🐉",Fairy:"🌸",Colorless:"⚪"};
+
+const DEXMAP={Bulbasaur:1,Ivysaur:2,Venusaur:3,Charmander:4,Charmeleon:5,Charizard:6,Squirtle:7,Wartortle:8,Blastoise:9,Caterpie:10,Metapod:11,Butterfree:12,Weedle:13,Kakuna:14,Beedrill:15,Pidgey:16,Pidgeotto:17,Pidgeot:18,Rattata:19,Raticate:20,Spearow:21,Fearow:22,Ekans:23,Arbok:24,Pikachu:25,Raichu:26,Sandshrew:27,Sandslash:28,Nidoran:29,Nidorina:30,Nidoqueen:31,Nidorino:33,Nidoking:34,Clefairy:35,Clefable:36,Vulpix:37,Ninetales:38,Jigglypuff:39,Wigglytuff:40,Zubat:41,Golbat:42,Oddish:43,Gloom:44,Vileplume:45,Paras:46,Parasect:47,Venonat:48,Venomoth:49,Diglett:50,Dugtrio:51,Meowth:52,Persian:53,Psyduck:54,Golduck:55,Mankey:56,Primeape:57,Growlithe:58,Arcanine:59,Poliwag:60,Poliwhirl:61,Poliwrath:62,Abra:63,Kadabra:64,Alakazam:65,Machop:66,Machoke:67,Machamp:68,Bellsprout:69,Weepinbell:70,Victreebel:71,Tentacool:72,Tentacruel:73,Geodude:74,Graveler:75,Golem:76,Ponyta:77,Rapidash:78,Slowpoke:79,Slowbro:80,Magnemite:81,Magneton:82,Doduo:84,Dodrio:85,Seel:86,Dewgong:87,Grimer:88,Muk:89,Shellder:90,Cloyster:91,Gastly:92,Haunter:93,Gengar:94,Onix:95,Drowzee:96,Hypno:97,Krabby:98,Kingler:99,Voltorb:100,Electrode:101,Exeggcute:102,Cubone:104,Marowak:105,Hitmonlee:106,Hitmonchan:107,Lickitung:108,Koffing:109,Weezing:110,Rhyhorn:111,Rhydon:112,Chansey:113,Tangela:114,Kangaskhan:115,Horsea:116,Seadra:117,Goldeen:118,Seaking:119,Staryu:120,Starmie:121,Scyther:123,Jynx:124,Electabuzz:125,Magmar:126,Pinsir:127,Tauros:128,Magikarp:129,Gyarados:130,Lapras:131,Ditto:132,Eevee:133,Vaporeon:134,Jolteon:135,Flareon:136,Porygon:137,Omanyte:138,Omastar:139,Kabuto:140,Kabutops:141,Aerodactyl:142,Snorlax:143,Articuno:144,Zapdos:145,Moltres:146,Dratini:147,Dragonair:148,Dragonite:149,Mewtwo:150,Mew:151,Chikorita:152,Cyndaquil:155,Totodile:158,Pichu:172,Cleffa:173,Igglybuff:174,Togepi:175,Togetic:176,Mareep:179,Ampharos:181,Espeon:196,Umbreon:197,Slowking:199,Scizor:212,Heracross:214,Sneasel:215,Teddiursa:216,Ursaring:217,Houndour:228,Houndoom:229,Tyranitar:248,Lugia:249,Celebi:251,Treecko:252,Torchic:255,Mudkip:258,Blaziken:257,Swampert:260,Ralts:280,Gardevoir:282,Metagross:376,Latias:380,Latios:381,Kyogre:382,Groudon:383,Rayquaza:384,Turtwig:387,Chimchar:390,Piplup:393,Lucario:448,Garchomp:445,Snivy:495,Tepig:498,Oshawott:501,Zoroark:571,Reshiram:643,Zekrom:644,Chespin:650,Fennekin:653,Froakie:656,Sylveon:700,Xerneas:716,Yveltal:717,Rowlet:722,Litten:725,Popplio:728,Mimikyu:778,Solgaleo:791,Lunala:792,Grookey:810,Scorbunny:813,Sobble:816,Zacian:888,Zamazenta:889};
+const getSprite=name=>{if(!name)return null;const id=DEXMAP[name]||DEXMAP[name.split(" ")[0]]||DEXMAP[name.split("-")[0]];return id?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`:null;};
+
+// ── Fallback cards ─────────────────────────────────────────────
+const FBP=[
+  {id:"pika",name:"Pikachu",supertype:"Pokémon",subtypes:["Basic"],hp:60,types:["Lightning"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Thunder Shock",cost:["Lightning"],damage:20,text:"Flip a coin. If heads, opponent's Active is Paralyzed."},{name:"Electro Ball",cost:["Lightning","Lightning"],damage:40,text:""}]},
+  {id:"char",name:"Charmander",supertype:"Pokémon",subtypes:["Basic"],hp:60,types:["Fire"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Scratch",cost:["Colorless"],damage:10,text:""},{name:"Ember",cost:["Fire","Colorless"],damage:30,text:"Discard a Fire Energy from this Pokémon."}]},
+  {id:"squirt",name:"Squirtle",supertype:"Pokémon",subtypes:["Basic"],hp:60,types:["Water"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Tackle",cost:["Colorless"],damage:10,text:""},{name:"Water Gun",cost:["Water","Colorless"],damage:30,text:""}]},
+  {id:"bulba",name:"Bulbasaur",supertype:"Pokémon",subtypes:["Basic"],hp:70,types:["Grass"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Vine Whip",cost:["Grass"],damage:20,text:""},{name:"Razor Leaf",cost:["Grass","Colorless"],damage:40,text:""}]},
+  {id:"psyduck",name:"Psyduck",supertype:"Pokémon",subtypes:["Basic"],hp:60,types:["Water"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Scratch",cost:["Colorless"],damage:10,text:""},{name:"Headache",cost:["Psychic"],damage:20,text:"Opponent can't play Trainers next turn."}]},
+  {id:"geodude",name:"Geodude",supertype:"Pokémon",subtypes:["Basic"],hp:70,types:["Fighting"],retreatCost:2,rarity:"Common",image:null,attacks:[{name:"Tackle",cost:["Colorless"],damage:10,text:""},{name:"Rock Throw",cost:["Fighting","Colorless"],damage:30,text:""}]},
+  {id:"eevee",name:"Eevee",supertype:"Pokémon",subtypes:["Basic"],hp:50,types:["Colorless"],retreatCost:1,rarity:"Uncommon",image:null,attacks:[{name:"Quick Attack",cost:["Colorless"],damage:20,text:""},{name:"Baton Pass",cost:["Colorless","Colorless"],damage:30,text:"Switch with a Bench Pokémon."}]},
+  {id:"snorlax",name:"Snorlax",supertype:"Pokémon",subtypes:["Basic"],hp:90,types:["Colorless"],retreatCost:4,rarity:"Rare",image:null,attacks:[{name:"Body Slam",cost:["Colorless","Colorless"],damage:30,text:"Flip coin. If heads, defending is Paralyzed."},{name:"Full Belly Lunge",cost:["Colorless","Colorless","Colorless"],damage:60,text:""}]},
+  {id:"mewtwo",name:"Mewtwo",supertype:"Pokémon",subtypes:["Basic"],hp:100,types:["Psychic"],retreatCost:2,rarity:"Rare Holo",image:null,attacks:[{name:"Psyburn",cost:["Psychic","Colorless"],damage:30,text:""},{name:"Psystrike",cost:["Psychic","Psychic","Colorless"],damage:90,text:"Not affected by Weakness or Resistance."}]},
+  {id:"magikarp",name:"Magikarp",supertype:"Pokémon",subtypes:["Basic"],hp:30,types:["Water"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Splash",cost:["Water"],damage:0,text:"Does nothing."},{name:"Flail",cost:["Water","Colorless"],damage:20,text:""}]},
+  {id:"haunter",name:"Haunter",supertype:"Pokémon",subtypes:["Basic"],hp:60,types:["Psychic"],retreatCost:1,rarity:"Uncommon",image:null,attacks:[{name:"Hypnosis",cost:["Psychic"],damage:20,text:"Defending is now Asleep."},{name:"Night Shade",cost:["Psychic","Psychic"],damage:50,text:""}]},
+  {id:"growlithe",name:"Growlithe",supertype:"Pokémon",subtypes:["Basic"],hp:70,types:["Fire"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Flare",cost:["Fire"],damage:20,text:""},{name:"Bite",cost:["Fire","Colorless"],damage:40,text:""}]},
+  {id:"oddish",name:"Oddish",supertype:"Pokémon",subtypes:["Basic"],hp:50,types:["Grass"],retreatCost:1,rarity:"Common",image:null,attacks:[{name:"Poisonpowder",cost:["Grass"],damage:10,text:"Defending is now Poisoned."},{name:"Acid",cost:["Grass","Colorless"],damage:30,text:""}]},
+  {id:"machop",name:"Machop",supertype:"Pokémon",subtypes:["Basic"],hp:70,types:["Fighting"],retreatCost:2,rarity:"Common",image:null,attacks:[{name:"Low Kick",cost:["Fighting"],damage:20,text:""},{name:"Karate Chop",cost:["Fighting","Fighting"],damage:50,text:""}]},
+];
+
+// ── Pack definitions ───────────────────────────────────────────
+const PACKS=[
+  {id:"basic",name:"Starter Pack",cost:100,emoji:"📦",desc:"5 Basic Pokémon cards",bg:"linear-gradient(135deg,#38BDF8,#1D4ED8)",query:"supertype:Pokémon subtypes:Basic",count:5},
+  {id:"fire",name:"Fire Pack",cost:120,emoji:"🔥",desc:"Fiery Fire-type Pokémon",bg:"linear-gradient(135deg,#FB923C,#DC2626)",query:"supertype:Pokémon types:Fire",count:5},
+  {id:"water",name:"Water Pack",cost:120,emoji:"💧",desc:"Splashing Water-types",bg:"linear-gradient(135deg,#38BDF8,#0369A1)",query:"supertype:Pokémon types:Water",count:5},
+  {id:"grass",name:"Grass Pack",cost:120,emoji:"🌿",desc:"Lush Grass-type Pokémon",bg:"linear-gradient(135deg,#4ADE80,#15803D)",query:"supertype:Pokémon types:Grass",count:5},
+  {id:"psychic",name:"Psychic Pack",cost:150,emoji:"🔮",desc:"Mysterious Psychic-types",bg:"linear-gradient(135deg,#C084FC,#7C3AED)",query:"supertype:Pokémon types:Psychic",count:5},
+  {id:"fighting",name:"Fighting Pack",cost:150,emoji:"👊",desc:"Fierce Fighting Pokémon",bg:"linear-gradient(135deg,#FB923C,#92400E)",query:"supertype:Pokémon types:Fighting",count:5},
+  {id:"lightning",name:"Lightning Pack",cost:150,emoji:"⚡",desc:"Electric Lightning-types",bg:"linear-gradient(135deg,#FBBF24,#B45309)",query:"supertype:Pokémon types:Lightning",count:5},
+  {id:"rare",name:"Rare Pack",cost:250,emoji:"✨",desc:"Higher chance of rare cards!",bg:"linear-gradient(135deg,#A78BFA,#4338CA)",query:"supertype:Pokémon rarity:Rare",count:5},
+  {id:"legend",name:"Legendary Pack",cost:500,emoji:"🌟",desc:"Rare Holo & legendary cards",bg:"linear-gradient(135deg,#FCD34D,#D97706)",query:'supertype:Pokémon rarity:"Rare Holo"',count:5},
+  {id:"mega",name:"Mega Bundle",cost:380,emoji:"💎",desc:"10 mixed cards — best value!",bg:"linear-gradient(135deg,#34D399,#0F766E)",query:"supertype:Pokémon subtypes:Basic",count:10},
+];
+
+// ── Quest definitions ──────────────────────────────────────────
+const QUESTS=[
+  // Combat
+  {id:"win1",cat:"Combat",title:"First Victory",desc:"Win 1 battle vs Bot",icon:"⚔️",reward:100,stat:"botWins",target:1},
+  {id:"win5",cat:"Combat",title:"Battle Veteran",desc:"Win 5 battles vs Bot",icon:"🏆",reward:300,stat:"botWins",target:5},
+  {id:"win15",cat:"Combat",title:"Champion Trainer",desc:"Win 15 battles",icon:"🌟",reward:750,stat:"botWins",target:15},
+  {id:"ko5",cat:"Combat",title:"KO Artist",desc:"KO 5 opponent Pokémon",icon:"💀",reward:150,stat:"kos",target:5},
+  {id:"ko20",cat:"Combat",title:"Knockout Master",desc:"KO 20 opponent Pokémon",icon:"💥",reward:400,stat:"kos",target:20},
+  {id:"dmg200",cat:"Combat",title:"Power Surge",desc:"Deal 200 total damage",icon:"💢",reward:100,stat:"damage",target:200},
+  {id:"dmg1000",cat:"Combat",title:"Destroyer",desc:"Deal 1000 total damage",icon:"🔥",reward:350,stat:"damage",target:1000},
+  // Collecting
+  {id:"col10",cat:"Collect",title:"Budding Collector",desc:"Collect 10 cards",icon:"🃏",reward:75,stat:"cards",target:10},
+  {id:"col30",cat:"Collect",title:"Card Enthusiast",desc:"Collect 30 cards",icon:"🃏",reward:200,stat:"cards",target:30},
+  {id:"col75",cat:"Collect",title:"Master Collector",desc:"Collect 75 cards",icon:"💎",reward:600,stat:"cards",target:75},
+  {id:"pack5",cat:"Collect",title:"Pack Addict",desc:"Open 5 packs",icon:"📦",reward:150,stat:"packs",target:5},
+  {id:"pack20",cat:"Collect",title:"Pack Fanatic",desc:"Open 20 packs",icon:"📦",reward:500,stat:"packs",target:20},
+  // Daily
+  {id:"daily3",cat:"Daily",title:"Consistent Trainer",desc:"Claim daily bonus 3 times",icon:"📅",reward:200,stat:"dailies",target:3},
+  {id:"daily7",cat:"Daily",title:"Dedicated Fan",desc:"Claim daily bonus 7 times",icon:"🗓️",reward:500,stat:"dailies",target:7},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
+const uid=()=>Math.random().toString(36).substr(2,9);
+const shuffle=arr=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const normalizeApiCard=c=>({uid:uid(),id:c.id,name:c.name,supertype:c.supertype||"Pokémon",subtypes:c.subtypes||["Basic"],hp:parseInt(c.hp)||60,types:c.types||["Colorless"],attacks:(c.attacks||[]).slice(0,2).map(a=>({name:a.name,cost:a.cost||[],damage:parseInt(a.damage)||0,text:a.text||""})),retreatCost:(c.retreatCost||[]).length,image:c.images?.small||null,rarity:c.rarity||"Common",weaknesses:c.weaknesses||[],resistances:c.resistances||[]});
+const makeEnergy=type=>({uid:uid(),id:`energy-${type}-${uid()}`,name:`${type} Energy`,supertype:"Energy",subtypes:["Basic"],hp:null,types:[type],attacks:[],retreatCost:0,image:null,rarity:"Common",weaknesses:[],resistances:[]});
+const getEnergyTotal=p=>Object.values(p?.energies||{}).reduce((a,b)=>a+b,0);
+
+// ── Real TCG energy matching ───────────────────────────────────
+function canAttack(pokemon,atkIdx=0){
+  const atk=pokemon?.attacks?.[atkIdx];
+  if(!atk)return false;
+  const cost=atk.cost||[];
+  if(cost.length===0)return true;
+  const avail={...(pokemon.energies||{})};
+  let colorless=0;
+  for(const c of cost){
+    if(c==="Colorless"){colorless++;continue;}
+    if((avail[c]||0)>0){avail[c]--;}
+    else return false;
+  }
+  const remaining=Object.values(avail).reduce((a,b)=>a+b,0);
+  return remaining>=colorless;
+}
+
+// ── Build deck from player's own Pokémon ──────────────────────
+function buildDeckFromCollection(pokemonPool){
+  const pokes=shuffle(pokemonPool).slice(0,8);
+  // Count types to determine energy composition
+  const typeCounts={};
+  pokes.forEach(p=>(p.types||["Colorless"]).forEach(t=>{typeCounts[t]=(typeCounts[t]||0)+1;}));
+  const sorted=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
+  const t1=sorted[0]?.[0]||"Colorless";
+  const t2=sorted[1]?.[0]||t1;
+  const energies=[
+    ...Array.from({length:8},()=>makeEnergy(t1)),
+    ...Array.from({length:4},()=>makeEnergy(t2)),
+  ];
+  return shuffle([...pokes,...energies]);
+}
+
+function setupSide(deck){
+  const d=[...deck];
+  const pi=d.findIndex(c=>c.supertype==="Pokémon");
+  if(pi<0)return null;
+  const active={...d.splice(pi,1)[0],uid:uid(),damage:0,energies:{}};
+  const prizes=d.splice(0,PRIZE_COUNT);
+  const hand=d.splice(0,HAND_SIZE);
+  return{active,bench:[],hand,deck:d,prizes,discard:[]};
+}
+
+function doAttack(state,atkKey,defKey,atkIdx){
+  let s=JSON.parse(JSON.stringify(state));
+  const att=s[atkKey].active,def=s[defKey].active;
+  if(!att||!def)return s;
+  const atk=att.attacks[atkIdx];if(!atk)return s;
+  const dmg=Math.max(atk.damage||20,0);
+  def.damage=(def.damage||0)+dmg;
+  const log=[`💥 ${att.name} used ${atk.name}! ${dmg} dmg!`];
+  if(atk.text)log.push(`📜 ${atk.text.slice(0,60)}${atk.text.length>60?"…":""}`);
+  // KO check
+  if(def.damage>=(def.hp||60)){
+    log.push(`💀 ${def.name} KO'd!`);
+    s[defKey].discard.push(def);s[defKey].active=null;
+    s.statsThisBattle=(s.statsThisBattle||{});
+    s.statsThisBattle.kos=(s.statsThisBattle.kos||0)+1;
+    s.statsThisBattle.damage=(s.statsThisBattle.damage||0)+dmg;
+    if(s[atkKey].prizes.length>0){const p=s[atkKey].prizes.splice(0,1)[0];s[atkKey].hand.push(p);log.push(`🏅 Prize taken! (${s[atkKey].prizes.length} left)`);}
+    if(s[atkKey].prizes.length===0){s.winner=atkKey;log.push(`🎉 ${atkKey==="player"?"You win!":"Bot wins!"}`);}
+    else if(s[defKey].bench.length>0){s[defKey].active={...s[defKey].bench.splice(0,1)[0],damage:0};log.push(`⬆️ ${s[defKey].active.name} promoted!`);}
+    else{s.winner=atkKey;log.push(`🎉 No Pokémon left! ${atkKey==="player"?"You win!":"Bot wins!"}`);}
+  } else {
+    s.statsThisBattle=(s.statsThisBattle||{});
+    s.statsThisBattle.damage=(s.statsThisBattle.damage||0)+dmg;
+  }
+  s.log=[...log,...s.log];
+  return s;
+}
+
+function botDoTurn(state){
+  let s=JSON.parse(JSON.stringify(state));
+  if(!s.bot.deck.length){s.winner="player";s.log=["🎉 Bot ran out of cards! You win!",...s.log];return s;}
+  s.bot.hand.push(s.bot.deck.shift());s.log=["🤖 Bot drew.",...s.log];
+  // Bot benches
+  const bp=s.bot.hand.filter(c=>c.supertype==="Pokémon");
+  if(bp.length&&s.bot.bench.length<MAX_BENCH){const p=bp[0];s.bot.hand=s.bot.hand.filter(c=>c.uid!==p.uid);s.bot.bench.push({...p,uid:uid(),damage:0,energies:{}});s.log=[`🤖 Bot benched ${p.name}!`,...s.log];}
+  // Bot attaches energy to active (typed)
+  if(s.bot.active){
+    const be=s.bot.hand.filter(c=>c.supertype==="Energy");
+    if(be.length){
+      // Prefer energy matching active's type
+      const activeType=s.bot.active.types?.[0]||"Colorless";
+      const matching=be.find(e=>e.types?.[0]===activeType)||be[0];
+      s.bot.hand=s.bot.hand.filter(c=>c.uid!==matching.uid);
+      const eType=matching.types?.[0]||"Colorless";
+      s.bot.active.energies=s.bot.active.energies||{};
+      s.bot.active.energies[eType]=(s.bot.active.energies[eType]||0)+1;
+      s.log=[`⚡ Bot charged ${s.bot.active.name} with ${eType}!`,...s.log];
+    }
+  }
+  // Bot attacks — pick best available
+  if(s.bot.active){
+    const ai=canAttack(s.bot.active,1)?1:canAttack(s.bot.active,0)?0:-1;
+    if(ai>=0)s=doAttack(s,"bot","player",ai);
+    else s.log=[`🤖 ${s.bot.active.name} charging...`,...s.log];
+  }
+  if(!s.winner){
+    s.turn="player";s.energyUsed=false;s.attacked=false;
+    if(!s.player.deck.length){s.winner="bot";s.log=["😢 No cards left! Bot wins!",...s.log];}
+    else{s.player.hand.push(s.player.deck.shift());s.log=["📤 You drew a card!",...s.log];}
+  }
+  return s;
+}
+
+function initBattle(playerPool,botPool,mode){
+  const player=setupSide(buildDeckFromCollection(playerPool));
+  const bot=setupSide(buildDeckFromCollection(botPool));
+  if(!player||!bot)return null;
+  return{player,bot,turn:"player",energyUsed:false,attacked:false,
+    log:["⚔️ Battle! Tap cards for details. Attach ⚡ to ANY Pokémon, then attack!"],
+    winner:null,mode,passplayTurn:"player1",passplayWaiting:false,statsThisBattle:{kos:0,damage:0}};
+}
+
+function battleReducer(state,action){
+  if(!state||state.winner)return state;
+  let s=JSON.parse(JSON.stringify(state));
+  const{myKey,theirKey}=action;
+  if(action.type==="attachEnergy"){
+    if(s.energyUsed)return s;
+    const eIdx=action.card?s[myKey].hand.findIndex(c=>c.uid===action.card.uid):s[myKey].hand.findIndex(c=>c.supertype==="Energy");
+    if(eIdx<0)return s;
+    const eCard=s[myKey].hand.splice(eIdx,1)[0];
+    const eType=eCard.types?.[0]||"Colorless";
+    // Target: 'active' or bench index
+    let target=null;
+    if(action.target==="active"){target=s[myKey].active;}
+    else if(typeof action.target==="number"){target=s[myKey].bench[action.target];}
+    if(!target)return s;
+    target.energies=target.energies||{};
+    target.energies[eType]=(target.energies[eType]||0)+1;
+    s.energyUsed=true;
+    s.log=[`⚡ ${eType} Energy → ${target.name}! (${getEnergyTotal(target)} total)`,...s.log];
+  } else if(action.type==="playPokemon"){
+    const pIdx=action.card?s[myKey].hand.findIndex(c=>c.uid===action.card.uid):s[myKey].hand.findIndex(c=>c.supertype==="Pokémon");
+    if(pIdx<0)return s;
+    const p=s[myKey].hand.splice(pIdx,1)[0];
+    if(!s[myKey].active){s[myKey].active={...p,uid:uid(),damage:0,energies:{}};s.log=[`🃏 ${p.name} is now Active!`,...s.log];}
+    else if(s[myKey].bench.length<MAX_BENCH){s[myKey].bench.push({...p,uid:uid(),damage:0,energies:{}});s.log=[`🃏 ${p.name} to Bench!`,...s.log];}
+  } else if(action.type==="attack"){
+    if(s.attacked||!canAttack(s[myKey].active,action.atkIdx))return s;
+    s=doAttack(s,myKey,theirKey,action.atkIdx);s.attacked=true;
+  } else if(action.type==="endTurn"){
+    if(s.mode==="passplay"){
+      s.passplayTurn=myKey==="player"?"player2":"player1";
+      s.passplayWaiting=true;s.energyUsed=false;s.attacked=false;
+      const nk=myKey==="player"?"bot":"player";
+      if(s[nk].deck.length){s[nk].hand.push(s[nk].deck.shift());}
+      return s;
+    }
+    s.turn="bot";s.energyUsed=false;s.attacked=false;
+  } else if(action.type==="resumePassplay"){s.passplayWaiting=false;}
+  return s;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPONENTS
+// ═══════════════════════════════════════════════════════════════
+
+// ── Energy dots ────────────────────────────────────────────────
+function EnergyDots({energies,max=6}){
+  const dots=[];
+  Object.entries(energies||{}).forEach(([type,count])=>{
+    for(let i=0;i<count&&dots.length<max;i++)dots.push(type);
+  });
+  if(!dots.length)return null;
+  return(
+    <div style={{display:"flex",gap:2,flexWrap:"wrap",justifyContent:"center"}}>
+      {dots.map((t,i)=><span key={i} style={{width:8,height:8,borderRadius:"50%",background:TC[t]||"#CBD5E1",display:"inline-block",boxShadow:`0 0 4px ${TC[t]||"#CBD5E1"}88`}}/>)}
+    </div>
+  );
+}
+
+// ── Card View ──────────────────────────────────────────────────
+function CardView({card,size="sm",selected,onClick,showBack,dimmed}){
+  const D={xs:{w:52,h:72,n:7,hp:7,a:7},sm:{w:84,h:116,n:9,hp:9,a:8},md:{w:116,h:162,n:11,hp:11,a:9},lg:{w:152,h:212,n:13,hp:13,a:11}};
+  const d=D[size]||D.sm;
+  if(showBack||!card)return(
+    <div onClick={onClick} style={{width:d.w,height:d.h,borderRadius:10,flexShrink:0,background:"linear-gradient(160deg,#1e3a8a,#312e81,#1e1b4b)",border:"1.5px solid #4338CA",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 14px rgba(0,0,0,0.5)",cursor:"pointer"}}>
+      <span style={{color:"#818CF8",fontSize:d.n*2.4,fontWeight:900}}>✦</span>
+    </div>
+  );
+  const tc=TC[card.types?.[0]]||"#94A3B8";
+  const sprite=card.supertype==="Pokémon"&&!card.image?getSprite(card.name):null;
+  const imgSrc=card.image||sprite;
+  return(
+    <div onClick={onClick} style={{width:d.w,height:d.h,borderRadius:10,overflow:"hidden",cursor:"pointer",flexShrink:0,display:"flex",flexDirection:"column",border:selected?`2px solid #FFD700`:`1.5px solid ${tc}99`,boxShadow:selected?`0 0 18px rgba(255,215,0,0.7),0 4px 16px rgba(0,0,0,0.6)`:"0 4px 14px rgba(0,0,0,0.5)",opacity:dimmed?0.4:1,background:imgSrc&&card.image?"#fff":`linear-gradient(160deg,${tc}22,${tc}66)`,transition:"transform 0.12s"}}>
+      <div style={{background:`${tc}ee`,padding:"2px 5px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+        <span style={{color:"#fff",fontSize:d.n,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%",textShadow:"0 1px 3px rgba(0,0,0,0.7)"}}>{card.name}</span>
+        {card.hp&&<span style={{color:"#FFD700",fontSize:d.hp,fontWeight:900,flexShrink:0,marginLeft:2,textShadow:"0 1px 3px rgba(0,0,0,0.9)"}}>HP{card.hp}</span>}
+      </div>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",background:imgSrc&&card.image?"#f5f5f5":`radial-gradient(ellipse,${tc}33,transparent 70%)`}}>
+        {imgSrc?<img src={imgSrc} alt={card.name} style={{width:card.image?"100%":"80%",height:card.image?"100%":"80%",objectFit:card.image?"cover":"contain",imageRendering:sprite?"pixelated":"auto"}} onError={e=>e.target.style.display="none"}/>:
+        card.supertype==="Energy"?<div style={{textAlign:"center"}}><div style={{fontSize:d.n*2.2}}>{TE[card.types?.[0]]||"✨"}</div>{size!=="xs"&&<div style={{color:"#fff",fontSize:d.a,fontWeight:700}}>{card.types?.[0]}</div>}</div>:
+        <div style={{color:"rgba(255,255,255,0.2)",fontSize:d.n*2}}>?</div>}
+      </div>
+      {size!=="xs"&&card.supertype==="Pokémon"&&card.attacks?.length>0&&(
+        <div style={{background:"rgba(0,0,0,0.7)",padding:"2px 5px",flexShrink:0}}>
+          {card.attacks.slice(0,size==="sm"?1:2).map((atk,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{color:"rgba(255,255,255,0.85)",fontSize:d.a,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"72%"}}>{atk.name}</span>
+              <span style={{color:"#FBBF24",fontSize:d.a,fontWeight:900,flexShrink:0}}>{atk.damage||"—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {card.supertype==="Pokémon"&&<div style={{height:3,background:tc,flexShrink:0}}/>}
+    </div>
+  );
+}
+
+// ── Card Detail Modal ──────────────────────────────────────────
+function CardDetailModal({card,onClose,onPlayBench,canBench,energyTargets,onAttachEnergy}){
+  if(!card)return null;
+  const tc=TC[card.types?.[0]]||"#94A3B8";
+  const sprite=card.supertype==="Pokémon"&&!card.image?getSprite(card.name):null;
+  const imgSrc=card.image||sprite;
+  const isEnergy=card.supertype==="Energy";
+  return(
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"linear-gradient(160deg,#1e1b4b,#0f0c29)",borderRadius:22,padding:18,width:"100%",maxWidth:340,border:`2px solid ${tc}`,boxShadow:`0 0 40px ${tc}66`,maxHeight:"94vh",overflowY:"auto",animation:"fadeIn 0.2s ease"}}>
+        <div style={{display:"flex",gap:14,marginBottom:14}}>
+          <div style={{width:100,height:140,borderRadius:12,overflow:"hidden",background:`linear-gradient(135deg,${tc}33,${tc}77)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:`1.5px solid ${tc}`}}>
+            {imgSrc?<img src={imgSrc} alt={card.name} style={{width:card.image?"100%":"88%",height:card.image?"100%":"88%",objectFit:card.image?"cover":"contain",imageRendering:sprite?"pixelated":"auto"}} onError={e=>e.target.style.display="none"}/>:<span style={{fontSize:40}}>{TE[card.types?.[0]]||"✨"}</span>}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:19,margin:"0 0 6px",lineHeight:1.1}}>{card.name}</h3>
+            <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
+              {card.types?.map(t=><span key={t} style={{background:TC[t]||"#94A3B8",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:99}}>{TE[t]} {t}</span>)}
+            </div>
+            {card.hp&&<p style={{color:"#FFD700",fontWeight:900,fontSize:17,margin:"2px 0"}}>{card.hp} HP</p>}
+            <p style={{color:"rgba(255,255,255,0.3)",fontSize:10,margin:"3px 0"}}>{card.rarity}</p>
+            {(card.retreatCost||0)>0&&<p style={{color:"rgba(255,255,255,0.3)",fontSize:10,margin:"3px 0"}}>Retreat: ⚪×{card.retreatCost}</p>}
+            {card.weaknesses?.length>0&&<p style={{color:"#FCA5A5",fontSize:10,margin:"3px 0"}}>Weak: {card.weaknesses.map(w=>`${w.type} ×${w.value||2}`).join(", ")}</p>}
+          </div>
+        </div>
+
+        {/* Attacks */}
+        {card.attacks?.length>0&&(
+          <div style={{marginBottom:14}}>
+            <p style={{color:"rgba(255,255,255,0.35)",fontSize:10,textTransform:"uppercase",letterSpacing:1,fontWeight:700,margin:"0 0 7px"}}>Attacks</p>
+            {card.attacks.map((atk,i)=>(
+              <div key={i} style={{background:"rgba(255,255,255,0.05)",borderRadius:12,padding:"9px 11px",marginBottom:5,border:"1px solid rgba(255,255,255,0.07)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <span style={{color:"#fff",fontWeight:800,fontSize:13}}>{atk.name}</span>
+                  <span style={{color:"#FBBF24",fontWeight:900,fontSize:19}}>{atk.damage||"—"}</span>
+                </div>
+                <div style={{display:"flex",gap:3,marginBottom:atk.text?5:0,flexWrap:"wrap"}}>
+                  {(atk.cost||[]).length===0?<span style={{color:"rgba(255,255,255,0.25)",fontSize:10}}>Free</span>:(atk.cost||[]).map((c,ci)=>(
+                    <span key={ci} style={{background:TC[c]||"#94A3B8",color:"#fff",fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:99}}>{TE[c]||c[0]} {c}</span>
+                  ))}
+                </div>
+                {atk.text&&<p style={{color:"rgba(255,255,255,0.4)",fontSize:10,margin:0,lineHeight:1.5,fontStyle:"italic"}}>{atk.text}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Energy card info */}
+        {isEnergy&&(
+          <div style={{background:"rgba(255,255,255,0.05)",borderRadius:12,padding:"12px",marginBottom:14,textAlign:"center"}}>
+            <div style={{fontSize:34,marginBottom:4}}>{TE[card.types?.[0]]||"✨"}</div>
+            <p style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>Attach to any of your Pokémon to power up attacks!</p>
+          </div>
+        )}
+
+        {/* Energy attach targets */}
+        {isEnergy&&energyTargets&&energyTargets.length>0&&(
+          <div style={{marginBottom:14}}>
+            <p style={{color:"rgba(255,255,255,0.35)",fontSize:10,textTransform:"uppercase",letterSpacing:1,fontWeight:700,margin:"0 0 7px"}}>Attach to which Pokémon?</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {energyTargets.map((t,i)=>(
+                <button key={i} onClick={()=>onAttachEnergy&&onAttachEnergy(t.target)}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:12,background:`rgba(255,255,255,0.07)`,border:`1px solid ${TC[t.types?.[0]]||"#94A3B8"}44`,cursor:"pointer",color:"#fff",textAlign:"left"}}>
+                  <div style={{width:36,height:50,borderRadius:7,overflow:"hidden",background:`linear-gradient(135deg,${TC[t.types?.[0]]||"#94A3B8"}33,${TC[t.types?.[0]]||"#94A3B8"}66)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    {(t.image||(t.supertype==="Pokémon"?getSprite(t.name):null))?(
+                      <img src={t.image||getSprite(t.name)} alt={t.name} style={{width:"90%",height:"90%",objectFit:"contain",imageRendering:"pixelated"}} onError={e=>e.target.style.display="none"}/>
+                    ):<span style={{fontSize:14}}>{TE[t.types?.[0]]||"?"}</span>}
+                  </div>
+                  <div style={{flex:1}}>
+                    <p style={{color:"#fff",fontWeight:700,fontSize:12,margin:"0 0 2px"}}>{t.name}</p>
+                    <p style={{color:"rgba(255,255,255,0.4)",fontSize:10,margin:"0 0 3px"}}>{t.isActive?"Active":"Bench"} · HP {Math.max(0,(t.hp||60)-(t.damage||0))}/{t.hp||60}</p>
+                    <EnergyDots energies={t.energies}/>
+                  </div>
+                  <span style={{background:TC[card.types?.[0]]||"#94A3B8",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:99,flexShrink:0}}>Attach ⚡</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{display:"flex",gap:8}}>
+          {onPlayBench&&<button onClick={onPlayBench} disabled={!canBench} style={{flex:1,padding:"10px",borderRadius:12,background:canBench?"linear-gradient(135deg,#16A34A,#15803D)":"rgba(255,255,255,0.05)",color:canBench?"#fff":"rgba(255,255,255,0.2)",fontWeight:800,fontSize:12,border:"none",cursor:canBench?"pointer":"not-allowed"}}>🃏 To Bench</button>}
+          <button onClick={onClose} style={{flex:1,padding:"10px",borderRadius:12,background:"rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.6)",fontWeight:700,fontSize:12,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer"}}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── HP Bar ─────────────────────────────────────────────────────
+function HpBar({pokemon,compact}){
+  if(!pokemon)return null;
+  const maxHp=pokemon.hp||60,curHp=Math.max(0,maxHp-(pokemon.damage||0)),pct=(curHp/maxHp)*100;
+  const col=pct>50?"#4ADE80":pct>25?"#FBBF24":"#F87171";
+  return(
+    <div style={{width:"100%"}}>
+      {!compact&&<div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:2}}>
+        <span style={{color:"rgba(255,255,255,0.75)",fontWeight:700,maxWidth:64,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pokemon.name}</span>
+        <span style={{color:col,fontWeight:900}}>{curHp}/{maxHp}</span>
+      </div>}
+      <div style={{height:compact?4:6,background:"rgba(255,255,255,0.12)",borderRadius:99,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${pct}%`,background:col,borderRadius:99,transition:"width 0.4s ease",boxShadow:`0 0 6px ${col}88`}}/>
+      </div>
+    </div>
+  );
+}
+
+// ── Attack Panel ───────────────────────────────────────────────
+function AttackPanel({pokemon,label}){
+  if(!pokemon?.attacks?.length)return null;
+  const tc=TC[pokemon.types?.[0]]||"#94A3B8";
+  return(
+    <div style={{background:"rgba(0,0,0,0.38)",borderRadius:10,padding:"7px 9px",border:`1px solid ${tc}33`,marginTop:4}}>
+      <p style={{color:tc,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,margin:"0 0 5px"}}>{label}</p>
+      {pokemon.attacks.map((atk,i)=>{
+        const can=canAttack(pokemon,i);
+        const needed=atk.cost?.length||0;
+        return(
+          <div key={i} style={{marginBottom:i<pokemon.attacks.length-1?5:0,opacity:can?1:0.45}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{color:can?"#fff":"rgba(255,255,255,0.4)",fontSize:12,fontWeight:700}}>{atk.name}</span>
+              <span style={{color:can?"#FBBF24":"rgba(255,255,255,0.25)",fontWeight:900,fontSize:14}}>{atk.damage||"—"}</span>
+            </div>
+            <div style={{display:"flex",gap:3,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
+              {needed===0?<span style={{color:"rgba(255,255,255,0.3)",fontSize:9}}>Free</span>:(atk.cost||[]).map((c,ci)=>(
+                <span key={ci} style={{background:TC[c]||"#94A3B8",color:"#fff",fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:99}}>{TE[c]||c[0]}</span>
+              ))}
+              {needed>0&&<span style={{color:"rgba(255,255,255,0.3)",fontSize:8,marginLeft:2}}>({getEnergyTotal(pokemon)}/{needed} ⚡)</span>}
+              {!can&&needed>0&&<span style={{color:"#F87171",fontSize:8}}>need more</span>}
+            </div>
+            {atk.text?<p style={{color:"rgba(255,255,255,0.3)",fontSize:9,margin:"2px 0 0",fontStyle:"italic",lineHeight:1.3}}>{atk.text}</p>:null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BATTLE GAME SCREEN
+// ═══════════════════════════════════════════════════════════════
+function BattleGame({state,dispatch,onEnd}){
+  const [selCard,setSelCard]=React.useState(null);
+  const{player,bot,turn,energyUsed,attacked,log,winner,mode,passplayTurn,passplayWaiting}=state;
+
+  if(passplayWaiting){
+    const nName=passplayTurn==="player1"?"Player 1":"Player 2";
+    return(
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:20,padding:24,textAlign:"center"}}>
+        <div style={{fontSize:64}}>🔄</div>
+        <h2 style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",margin:0}}>Pass to {nName}!</h2>
+        <p style={{color:"rgba(255,255,255,0.4)",fontSize:13}}>Cover screen before handing over</p>
+        <button onClick={()=>{setSelCard(null);dispatch({type:"resumePassplay"});}} style={{background:"#FFD700",color:"#000",fontWeight:900,fontSize:17,padding:"14px 32px",borderRadius:16,border:"none",cursor:"pointer",fontFamily:"'Fredoka One',cursive"}}>I'm {nName} — Ready! ✓</button>
+      </div>
+    );
+  }
+
+  const myKey=mode==="passplay"?(passplayTurn==="player1"?"player":"bot"):"player";
+  const theirKey=myKey==="player"?"bot":"player";
+  const myLabel=mode==="passplay"?(passplayTurn==="player1"?"P1":"P2"):"You";
+  const theirLabel=mode==="passplay"?(passplayTurn==="player1"?"P2":"P1"):"Bot";
+  const mySide=state[myKey],theirSide=state[theirKey];
+  const myActive=mySide.active,theirActive=theirSide.active;
+  const isMyTurn=mode==="bot"?turn==="player":true;
+  const canBench=isMyTurn&&!winner&&mySide.hand.some(c=>c.supertype==="Pokémon")&&mySide.bench.length<MAX_BENCH;
+
+  // Build energy attach targets for modal
+  const buildEnergyTargets=()=>{
+    if(energyUsed)return[];
+    const targets=[];
+    if(myActive)targets.push({...myActive,isActive:true,target:"active"});
+    mySide.bench.forEach((b,i)=>targets.push({...b,isActive:false,target:i}));
+    return targets;
+  };
+
+  const handleCardTap=card=>{
+    if(!isMyTurn||winner)return;
+    setSelCard(card);
+  };
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:6,padding:8,minHeight:"100%",position:"relative"}}>
+      {selCard&&(
+        <CardDetailModal card={selCard} onClose={()=>setSelCard(null)}
+          onPlayBench={selCard.supertype==="Pokémon"?()=>{dispatch({type:"playPokemon",myKey,theirKey,card:selCard});setSelCard(null);}:undefined}
+          canBench={canBench&&selCard.supertype==="Pokémon"}
+          energyTargets={selCard.supertype==="Energy"?buildEnergyTargets():[]}
+          onAttachEnergy={selCard.supertype==="Energy"?(target)=>{dispatch({type:"attachEnergy",myKey,theirKey,card:selCard,target});setSelCard(null);}:undefined}
+        />
+      )}
+      {winner&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.93)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:50,borderRadius:12,gap:14}}>
+          <div style={{fontSize:72}}>{winner===myKey?"🏆":"😢"}</div>
+          <h2 style={{fontFamily:"'Fredoka One',cursive",fontSize:34,color:"#FFD700",textShadow:"3px 3px 0 #CC0000",margin:0}}>
+            {mode==="passplay"?(winner==="player"?"P1 Wins!":"P2 Wins!"):winner==="player"?"You Win!":"Bot Wins!"}
+          </h2>
+          {winner==="player"&&mode==="bot"&&<p style={{color:"#4ADE80",fontWeight:700,fontSize:15}}>+{WIN_COINS} coins! 🪙</p>}
+          <button onClick={onEnd} style={{background:"#FFD700",color:"#000",fontWeight:900,fontSize:17,padding:"13px 36px",borderRadius:16,border:"none",cursor:"pointer",fontFamily:"'Fredoka One',cursive"}}>Continue</button>
+        </div>
+      )}
+
+      {/* ─── Opponent ─── */}
+      <div style={{background:"rgba(190,18,60,0.1)",border:"1px solid rgba(190,18,60,0.18)",borderRadius:13,padding:"7px 9px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+          <span style={{color:"#FDA4AF",fontSize:11,fontWeight:700}}>⚔️ {theirLabel}{mode==="bot"&&turn==="bot"?" (thinking...)":""}</span>
+          <span style={{color:"rgba(255,255,255,0.3)",fontSize:10}}>🏅{theirSide.prizes.length} 🃏{theirSide.deck.length}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"flex-start",gap:5}}>
+          <div style={{display:"flex",gap:2,flexShrink:0}}>{Array.from({length:Math.min(theirSide.hand.length,5)}).map((_,i)=><CardView key={i} showBack size="xs"/>)}</div>
+          <div style={{display:"flex",gap:3,flex:1,justifyContent:"center",flexWrap:"wrap"}}>
+            {theirSide.bench.map(c=>(
+              <div key={c.uid} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <CardView card={c} size="xs"/>
+                <EnergyDots energies={c.energies} max={4}/>
+                <div style={{width:52}}><HpBar pokemon={c} compact/></div>
+              </div>
+            ))}
+          </div>
+          <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            {theirActive?<>
+              <CardView card={theirActive} size="sm"/>
+              <EnergyDots energies={theirActive.energies}/>
+              <div style={{width:84}}><HpBar pokemon={theirActive}/></div>
+            </>:<div style={{width:84,height:116,borderRadius:10,border:"2px dashed rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.12)",fontSize:11}}>KO'd</div>}
+          </div>
+        </div>
+        {theirActive&&<AttackPanel pokemon={theirActive} label={`${theirLabel}'s ${theirActive.name}`}/>}
+      </div>
+
+      {/* ─── Log ─── */}
+      <div style={{background:"rgba(0,0,0,0.48)",borderRadius:10,padding:"5px 9px",height:56,overflowY:"auto",flexShrink:0,border:"1px solid rgba(255,255,255,0.05)"}}>
+        {log.slice(0,10).map((l,i)=><p key={i} style={{color:`rgba(255,255,255,${Math.max(0.15,0.85-i*0.08)})`,fontSize:10,margin:"1px 0",lineHeight:1.4}}>{l}</p>)}
+      </div>
+
+      {/* ─── Player ─── */}
+      <div style={{background:"rgba(29,78,216,0.1)",border:"1px solid rgba(29,78,216,0.2)",borderRadius:13,padding:"7px 9px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+          <span style={{color:"#93C5FD",fontSize:11,fontWeight:700}}>🛡️ {myLabel}{isMyTurn?" · YOUR TURN":""}</span>
+          <span style={{color:"rgba(255,255,255,0.3)",fontSize:10}}>🏅{mySide.prizes.length} 🃏{mySide.deck.length}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"flex-start",gap:5}}>
+          <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            {myActive?<>
+              <CardView card={myActive} size="sm" onClick={()=>handleCardTap(myActive)}/>
+              <EnergyDots energies={myActive.energies}/>
+              <div style={{width:84}}><HpBar pokemon={myActive}/></div>
+            </>:<div style={{width:84,height:116,borderRadius:10,border:"2px dashed rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.12)",fontSize:11}}>KO'd</div>}
+          </div>
+          <div style={{display:"flex",gap:3,flex:1,justifyContent:"center",flexWrap:"wrap"}}>
+            {mySide.bench.map(c=>(
+              <div key={c.uid} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <CardView card={c} size="xs" onClick={()=>handleCardTap(c)}/>
+                <EnergyDots energies={c.energies} max={4}/>
+                <div style={{width:52}}><HpBar pokemon={c} compact/></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {myActive&&<AttackPanel pokemon={myActive} label={`${myLabel}'s ${myActive.name}`}/>}
+      </div>
+
+      {/* ─── Actions ─── */}
+      {isMyTurn&&!winner&&(
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {myActive?.attacks?.map((atk,i)=>{
+            const able=!attacked&&canAttack(myActive,i);
+            return(
+              <button key={i} onClick={()=>able&&dispatch({type:"attack",atkIdx:i,myKey,theirKey})}
+                style={{width:"100%",padding:"9px 12px",borderRadius:13,fontWeight:900,fontSize:12,border:"none",cursor:able?"pointer":"not-allowed",background:able?"linear-gradient(135deg,#DC2626,#9F1239)":"rgba(255,255,255,0.05)",color:able?"#fff":"rgba(255,255,255,0.18)",boxShadow:able?"0 4px 18px rgba(220,38,38,0.4)":"none",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span>⚔️ {atk.name}</span>
+                <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <span style={{display:"flex",gap:2}}>{(atk.cost||[]).map((c,ci)=><span key={ci} style={{background:TC[c]||"#94A3B8",color:"#fff",fontSize:8,padding:"1px 4px",borderRadius:99,fontWeight:700}}>{TE[c]||c[0]}</span>)}</span>
+                  <span style={{color:able?"#FBBF24":"rgba(255,255,255,0.2)",fontWeight:900,fontSize:15}}>{atk.damage||"—"}</span>
+                </div>
+              </button>
+            );
+          })}
+          <button onClick={()=>dispatch({type:"endTurn",myKey,theirKey})} style={{width:"100%",padding:"7px",borderRadius:11,fontWeight:700,fontSize:12,border:"none",cursor:"pointer",background:attacked?"linear-gradient(135deg,#16A34A,#15803D)":"rgba(255,255,255,0.07)",color:attacked?"#fff":"rgba(255,255,255,0.3)"}}>
+            {attacked?"✓ End Turn":"Pass Turn (no attack)"}
+          </button>
+        </div>
+      )}
+
+      {/* ─── Hand ─── */}
+      <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:5}}>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:9,margin:"0 0 5px",fontWeight:700,textTransform:"uppercase",letterSpacing:0.8}}>Hand — Tap to play / attach</p>
+        <div style={{overflowX:"auto"}}>
+          <div style={{display:"flex",gap:6,padding:"2px"}}>
+            {mySide.hand.length===0?<p style={{color:"rgba(255,255,255,0.2)",fontSize:11,padding:"14px 0"}}>Hand is empty</p>:mySide.hand.map(card=>(
+              <div key={card.uid} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+                <CardView card={card} size="sm" onClick={()=>handleCardTap(card)}/>
+                <p style={{color:"rgba(255,255,255,0.3)",fontSize:8,margin:0,width:80,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QUEST SCREEN
+// ═══════════════════════════════════════════════════════════════
+function QuestScreen({questStats,claimedQuests,onClaim}){
+  const [activeTab,setActiveTab]=React.useState("Combat");
+  const cats=["Combat","Collect","Daily"];
+  const visible=QUESTS.filter(q=>q.cat===activeTab);
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      <div style={{padding:"8px 16px 0",flexShrink:0}}>
+        <p style={{color:"rgba(255,255,255,0.35)",fontSize:11,margin:"0 0 8px"}}>Complete quests to earn bonus coins!</p>
+        <div style={{display:"flex",gap:8}}>
+          {cats.map(c=>(
+            <button key={c} onClick={()=>setActiveTab(c)} style={{flex:1,padding:"7px 4px",borderRadius:12,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",background:activeTab===c?"linear-gradient(135deg,#A78BFA,#4338CA)":"rgba(255,255,255,0.07)",color:activeTab===c?"#fff":"rgba(255,255,255,0.5)"}}>
+              {c==="Combat"?"⚔️ Combat":c==="Collect"?"🃏 Collect":"📅 Daily"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"10px 16px 100px"}}>
+        {visible.map(q=>{
+          const prog=Math.min(questStats[q.stat]||0,q.target);
+          const pct=(prog/q.target)*100;
+          const complete=prog>=q.target;
+          const claimed=claimedQuests.includes(q.id);
+          return(
+            <div key={q.id} style={{background:"rgba(255,255,255,0.04)",borderRadius:16,padding:"12px 14px",marginBottom:10,border:`1px solid rgba(255,255,255,${claimed?0.04:complete?0.25:0.07})`,opacity:claimed?0.55:1,animation:"fadeIn 0.3s ease"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                <span style={{fontSize:28,flexShrink:0}}>{q.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{color:claimed?"rgba(255,255,255,0.4)":complete?"#FFD700":"#fff",fontWeight:800,fontSize:13,margin:"0 0 1px"}}>{q.title}{claimed?" ✓":""}</p>
+                  <p style={{color:"rgba(255,255,255,0.4)",fontSize:11,margin:0}}>{q.desc}</p>
+                </div>
+                <div style={{flexShrink:0,textAlign:"right"}}>
+                  <p style={{color:"#FBBF24",fontWeight:900,fontSize:13,margin:"0 0 1px"}}>🪙{q.reward}</p>
+                  <p style={{color:"rgba(255,255,255,0.3)",fontSize:10,margin:0}}>{prog}/{q.target}</p>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div style={{height:6,background:"rgba(255,255,255,0.1)",borderRadius:99,overflow:"hidden",marginBottom:8}}>
+                <div style={{height:"100%",width:`${pct}%`,background:claimed?"rgba(255,255,255,0.2)":complete?"linear-gradient(90deg,#FFD700,#FF8C00)":"linear-gradient(90deg,#60A5FA,#4F46E5)",borderRadius:99,transition:"width 0.5s ease",boxShadow:complete&&!claimed?"0 0 8px rgba(255,215,0,0.5)":"none"}}/>
+              </div>
+              {complete&&!claimed&&(
+                <button onClick={()=>onClaim(q)} style={{width:"100%",padding:"9px",borderRadius:11,background:"linear-gradient(135deg,#FFD700,#FF8C00)",color:"#000",fontWeight:900,fontSize:13,border:"none",cursor:"pointer",fontFamily:"'Fredoka One',cursive",boxShadow:"0 4px 16px rgba(255,215,0,0.35)"}}>
+                  🎉 Claim {q.reward} Coins!
+                </button>
+              )}
+              {claimed&&<p style={{color:"rgba(255,255,255,0.3)",fontSize:11,textAlign:"center",margin:0}}>Reward claimed!</p>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOME SCREEN
+// ═══════════════════════════════════════════════════════════════
+function HomeScreen({coins,collection,wins,onDaily,dailyAvailable,navigate,questStats,claimedQuests}){
+  const claimable=QUESTS.filter(q=>{const prog=Math.min(questStats[q.stat]||0,q.target);return prog>=q.target&&!claimedQuests.includes(q.id);}).length;
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:18,padding:"20px 16px"}}>
+      <div style={{textAlign:"center"}}>
+        <h1 style={{fontFamily:"'Fredoka One',cursive",fontSize:52,color:"#FFD700",textShadow:"4px 4px 0 #CC0000,2px 2px 0 #FF6B35",margin:0,lineHeight:1}}>PokéCards!</h1>
+        <p style={{color:"rgba(255,255,255,0.4)",fontSize:13,margin:"4px 0 0"}}>Collect · Build · Battle</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,width:"100%",maxWidth:340}}>
+        {[{l:"Coins",v:`₽${coins}`,i:"🪙",bg:"linear-gradient(135deg,#F59E0B,#EA580C)"},{l:"Cards",v:collection.length,i:"🃏",bg:"linear-gradient(135deg,#38BDF8,#1D4ED8)"},{l:"Wins",v:wins,i:"🏆",bg:"linear-gradient(135deg,#34D399,#059669)"}].map(s=>(
+          <div key={s.l} style={{background:s.bg,borderRadius:18,padding:"12px 8px",textAlign:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+            <div style={{fontSize:24}}>{s.i}</div>
+            <div style={{color:"#fff",fontWeight:900,fontSize:20,lineHeight:1}}>{s.v}</div>
+            <div style={{color:"rgba(255,255,255,0.65)",fontSize:11}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+      {dailyAvailable&&<button onClick={onDaily} style={{width:"100%",maxWidth:340,background:"linear-gradient(135deg,#FFD700,#FF8C00)",color:"#000",fontWeight:900,fontSize:16,padding:"15px 20px",borderRadius:18,border:"none",cursor:"pointer",boxShadow:"0 6px 24px rgba(255,165,0,0.4)",fontFamily:"'Fredoka One',cursive"}}>🎁 Daily Bonus! +{DAILY_COINS} coins</button>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,width:"100%",maxWidth:340}}>
+        {[
+          {l:"My Cards",i:"🃏",t:"collection",bg:"linear-gradient(135deg,#38BDF8,#1D4ED8)"},
+          {l:"Shop",i:"🛍️",t:"shop",bg:"linear-gradient(135deg,#FB923C,#DC2626)"},
+          {l:"Battle!",i:"⚔️",t:"battle",bg:"linear-gradient(135deg,#F87171,#BE123C)"},
+          {l:`Quests${claimable>0?` 🔴`:""}`,i:"📋",t:"quests",bg:"linear-gradient(135deg,#A78BFA,#4F46E5)"},
+          {l:"Pokédex",i:"📖",t:"pokedex",bg:"linear-gradient(135deg,#34D399,#0F766E)"},
+        ].map(b=>(
+          <button key={b.l} onClick={()=>navigate(b.t)} style={{background:b.bg,borderRadius:16,padding:"14px 10px",color:"#fff",textAlign:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+            <div style={{fontSize:30,marginBottom:3}}>{b.i}</div>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:14}}>{b.l}</div>
+          </button>
+        ))}
+      </div>
+      <div style={{background:"rgba(255,255,255,0.04)",borderRadius:14,padding:"10px 14px",width:"100%",maxWidth:340,border:"1px solid rgba(255,255,255,0.07)"}}>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"2px 0"}}>⚡ Tap energy cards → pick which Pokémon gets them</p>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"2px 0"}}>🎯 Attacks need the correct energy types!</p>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"2px 0"}}>🏅 Take all {PRIZE_COUNT} prizes to win!</p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COLLECTION SCREEN
+// ═══════════════════════════════════════════════════════════════
+function CollectionScreen({collection}){
+  const [filter,setFilter]=React.useState("All");
+  const [search,setSearch]=React.useState("");
+  const [detail,setDetail]=React.useState(null);
+  const types=["All","Pokémon",...Object.keys(TC)];
+  const filtered=collection.filter(c=>(filter==="All"||c.supertype===filter||c.types?.includes(filter))&&(!search||c.name.toLowerCase().includes(search.toLowerCase())));
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {detail&&<CardDetailModal card={detail} onClose={()=>setDetail(null)}/>}
+      <div style={{padding:"10px 16px 8px",flexShrink:0}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search cards..." style={{width:"100%",background:"rgba(255,255,255,0.07)",color:"#fff",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:"8px 14px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+        <div style={{display:"flex",gap:5,marginTop:8,overflowX:"auto",paddingBottom:4}}>
+          {types.map(t=><button key={t} onClick={()=>setFilter(t)} style={{flexShrink:0,padding:"4px 11px",borderRadius:99,fontSize:11,fontWeight:700,border:"none",cursor:"pointer",background:filter===t?(TC[t]||"#FFD700"):"rgba(255,255,255,0.09)",color:filter===t?"#fff":"rgba(255,255,255,0.55)"}}>{t}</button>)}
+        </div>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"5px 0 0"}}>{filtered.length} cards · Tap to inspect</p>
+      </div>
+      {filtered.length===0?(
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.25)",gap:12}}>
+          <div style={{fontSize:56}}>📦</div><p style={{fontSize:14}}>No cards yet — visit the Shop!</p>
+        </div>
+      ):(
+        <div style={{flex:1,overflowY:"auto",padding:"0 16px 100px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+            {filtered.map(card=>(
+              <div key={card.uid} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                <CardView card={card} size="md" onClick={()=>setDetail(card)}/>
+                <p style={{color:"rgba(255,255,255,0.45)",fontSize:9,textAlign:"center",margin:0,width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</p>
+                {card.hp&&<p style={{color:"#FBBF24",fontSize:8,margin:0}}>{card.hp} HP · {card.rarity}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SHOP SCREEN
+// ═══════════════════════════════════════════════════════════════
+function ShopScreen({coins,onBuyPack,packAnim,newCards}){
+  const [detail,setDetail]=React.useState(null);
+  const [tab,setTab]=React.useState("Basic");
+  const tabs=["Basic","Type","Premium"];
+  const packGroups={
+    Basic:PACKS.filter(p=>["basic","mega"].includes(p.id)),
+    Type:PACKS.filter(p=>["fire","water","grass","psychic","fighting","lightning"].includes(p.id)),
+    Premium:PACKS.filter(p=>["rare","legend"].includes(p.id)),
+  };
+  if(packAnim)return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"80vh",gap:20,padding:"0 16px"}}>
+      {detail&&<CardDetailModal card={detail} onClose={()=>setDetail(null)}/>}
+      <h2 style={{fontFamily:"'Fredoka One',cursive",fontSize:36,color:"#FFD700",textShadow:"3px 3px 0 #CC0000",margin:0}}>New Cards! ✨</h2>
+      <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:12}}>
+        {newCards.map((card,i)=>(
+          <div key={card.uid} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,animation:`bounceIn 0.5s ${i*0.08}s both`}}>
+            <CardView card={card} size="md" onClick={()=>setDetail(card)}/>
+            <p style={{color:"rgba(255,255,255,0.5)",fontSize:9,textAlign:"center",margin:0,maxWidth:100}}>{card.name}</p>
+            <p style={{color:"#FBBF24",fontSize:8,margin:0}}>{card.rarity}</p>
+          </div>
+        ))}
+      </div>
+      <p style={{color:"rgba(255,255,255,0.35)",fontSize:12}}>Tap a card to read its attacks!</p>
+      <button onClick={()=>onBuyPack(null)} style={{background:"#FFD700",color:"#000",fontWeight:900,fontSize:16,padding:"13px 36px",borderRadius:18,border:"none",cursor:"pointer",fontFamily:"'Fredoka One',cursive",boxShadow:"0 4px 20px rgba(255,215,0,0.4)"}}>Add to Collection ✓</button>
+    </div>
+  );
+  return(
+    <div style={{display:"flex",flexDirection:"column",padding:"12px 16px",gap:10}}>
+      <div style={{background:"rgba(255,215,0,0.1)",border:"1px solid rgba(255,215,0,0.25)",borderRadius:14,padding:"9px 14px",textAlign:"center"}}>
+        <span style={{color:"#FFD700",fontWeight:900,fontSize:20}}>🪙 {coins} coins</span>
+      </div>
+      <div style={{display:"flex",gap:7}}>
+        {tabs.map(t=><button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"7px 4px",borderRadius:11,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",background:tab===t?"linear-gradient(135deg,#38BDF8,#1D4ED8)":"rgba(255,255,255,0.07)",color:tab===t?"#fff":"rgba(255,255,255,0.5)"}}>{t}</button>)}
+      </div>
+      {(packGroups[tab]||[]).map(pack=>(
+        <div key={pack.id} style={{background:pack.bg,borderRadius:16,padding:"12px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+          <div style={{fontSize:40,flexShrink:0}}>{pack.emoji}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:16,margin:"0 0 2px"}}>{pack.name}</h3>
+            <p style={{color:"rgba(255,255,255,0.65)",fontSize:11,margin:"0 0 2px"}}>{pack.desc}</p>
+            <p style={{color:"#FBBF24",fontWeight:700,fontSize:12,margin:0}}>🪙 {pack.cost} coins · {pack.count||5} cards</p>
+          </div>
+          <button onClick={()=>onBuyPack(pack)} disabled={coins<pack.cost}
+            style={{flexShrink:0,padding:"9px 14px",borderRadius:11,fontWeight:900,fontSize:12,border:"none",cursor:coins>=pack.cost?"pointer":"not-allowed",background:coins>=pack.cost?"#fff":"rgba(255,255,255,0.18)",color:coins>=pack.cost?"#1D4ED8":"rgba(255,255,255,0.35)"}}>
+            {coins>=pack.cost?"Open!":"Need\ncoins"}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BATTLE SELECT
+// ═══════════════════════════════════════════════════════════════
+function BattleSelect({onStart,collection}){
+  const ownedPokes=collection.filter(c=>c.supertype==="Pokémon");
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:20,padding:"28px 16px"}}>
+      <h2 style={{fontFamily:"'Fredoka One',cursive",fontSize:40,color:"#FFD700",textShadow:"3px 3px 0 #CC0000",margin:0}}>Battle Mode!</h2>
+      {ownedPokes.length>0&&(
+        <div style={{background:"rgba(255,255,255,0.05)",borderRadius:14,padding:"10px 14px",width:"100%",maxWidth:300,border:"1px solid rgba(255,255,255,0.08)"}}>
+          <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 5px",fontWeight:700}}>Your Deck</p>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+            {ownedPokes.slice(0,6).map(p=>(
+              <div key={p.uid} style={{width:36,height:36,borderRadius:7,overflow:"hidden",background:`linear-gradient(135deg,${TC[p.types?.[0]]||"#94A3B8"}44,${TC[p.types?.[0]]||"#94A3B8"}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {(p.image||getSprite(p.name))?<img src={p.image||getSprite(p.name)} alt={p.name} style={{width:"90%",height:"90%",objectFit:"contain",imageRendering:"pixelated"}} onError={e=>e.target.style.display="none"}/>:<span style={{fontSize:14}}>{TE[p.types?.[0]]||"?"}</span>}
+              </div>
+            ))}
+            {ownedPokes.length>6&&<div style={{width:36,height:36,borderRadius:7,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.4)",fontSize:11,fontWeight:700}}>+{ownedPokes.length-6}</div>}
+          </div>
+          <p style={{color:"rgba(255,255,255,0.3)",fontSize:10,margin:"5px 0 0"}}>{ownedPokes.length} Pokémon in collection · auto-deck picks up to 8</p>
+        </div>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:300}}>
+        {[{l:"vs Bot",s:"Your cards vs AI trainer",e:"🤖",m:"bot",bg:"linear-gradient(135deg,#F87171,#BE123C)"},{l:"Pass & Play",s:"2 players, 1 device",e:"👥",m:"passplay",bg:"linear-gradient(135deg,#60A5FA,#4F46E5)"}].map(m=>(
+          <button key={m.m} onClick={()=>onStart(m.m)} style={{background:m.bg,color:"#fff",border:"none",borderRadius:18,padding:"18px 20px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:14,boxShadow:"0 6px 24px rgba(0,0,0,0.3)"}}>
+            <div style={{fontSize:42}}>{m.e}</div>
+            <div><div style={{fontFamily:"'Fredoka One',cursive",fontSize:20}}>{m.l}</div><div style={{color:"rgba(255,255,255,0.65)",fontSize:12}}>{m.s}</div></div>
+          </button>
+        ))}
+      </div>
+      <div style={{background:"rgba(255,255,255,0.04)",borderRadius:14,padding:"10px 14px",maxWidth:300,width:"100%",border:"1px solid rgba(255,255,255,0.07)"}}>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"2px 0"}}>⚡ Tap energy from hand → pick any target</p>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"2px 0"}}>🎯 Attacks need correct energy types</p>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:11,margin:"2px 0"}}>🏆 Win = 🪙{WIN_COINS} coins + quest progress!</p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POKÉDEX SCREEN
+// ═══════════════════════════════════════════════════════════════
+function PokedexScreen({collection}){
+  const [detail,setDetail]=React.useState(null);
+  const owned=name=>collection.some(c=>c.name===name);
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {detail&&<CardDetailModal card={detail} onClose={()=>setDetail(null)}/>}
+      <div style={{padding:"8px 16px 4px",flexShrink:0}}>
+        <p style={{color:"rgba(255,255,255,0.35)",fontSize:11,margin:0}}>{Object.keys(DEXMAP).slice(0,151).filter(n=>owned(n)).length}/151 Gen 1 owned · Tap to preview</p>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"6px 16px 100px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+          {Object.entries(DEXMAP).slice(0,151).map(([name,id])=>{
+            const spriteUrl=`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+            const own=owned(name);
+            const fallback=FBP.find(f=>f.name===name);
+            return(
+              <div key={id} onClick={()=>{const base=collection.find(c=>c.name===name)||fallback||{name,id:`dex-${id}`,supertype:"Pokémon",subtypes:["Basic"],hp:60,types:["Colorless"],attacks:[],retreatCost:1,rarity:"???",image:null,weaknesses:[],resistances:[]};setDetail({...base,uid:base.uid||uid()});}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",opacity:own?1:0.38}}>
+                <div style={{width:58,height:58,background:`rgba(255,255,255,${own?0.08:0.03})`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid rgba(255,255,255,${own?0.12:0.04})`,overflow:"hidden"}}>
+                  <img src={spriteUrl} alt={name} style={{width:"85%",height:"85%",objectFit:"contain",imageRendering:"pixelated"}} onError={e=>e.target.style.display="none"}/>
+                </div>
+                <p style={{color:own?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.18)",fontSize:8,textAlign:"center",margin:0,maxWidth:58,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{own?name:`#${id}`}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════════════
+function App(){
+  const [screen,setScreen]=React.useState("home");
+  const [coins,setCoins]=React.useState(STARTING_COINS);
+  const [collection,setCollection]=React.useState([]);
+  const [wins,setWins]=React.useState(0);
+  const [lastDaily,setLastDaily]=React.useState(null);
+  const [starterPool,setStarterPool]=React.useState([]);
+  const [loading,setLoading]=React.useState(true);
+  const [packAnim,setPackAnim]=React.useState(false);
+  const [newCards,setNewCards]=React.useState([]);
+  const [battle,setBattle]=React.useState(null);
+  const [questStats,setQuestStats]=React.useState({botWins:0,kos:0,damage:0,cards:0,packs:0,dailies:0});
+  const [claimedQuests,setClaimedQuests]=React.useState([]);
+  const winHandled=React.useRef(false);
+  const coinsRef=React.useRef(STARTING_COINS);
+  const winsRef=React.useRef(0);
+  const questRef=React.useRef(questStats);
+  const collRef=React.useRef(collection);
+  React.useEffect(()=>{coinsRef.current=coins;},[coins]);
+  React.useEffect(()=>{winsRef.current=wins;},[wins]);
+  React.useEffect(()=>{questRef.current=questStats;},[questStats]);
+  React.useEffect(()=>{collRef.current=collection;},[collection]);
+
+  React.useEffect(()=>{
+    async function init(){
+      const[c,col,w,ld,st,qs,cq]=await Promise.all([
+        load("pc5_coins",STARTING_COINS),load("pc5_collection",[]),load("pc5_wins",0),
+        load("pc5_daily",null),load("pc5_starters",null),
+        load("pc5_questStats",{botWins:0,kos:0,damage:0,cards:0,packs:0,dailies:0}),
+        load("pc5_claimed",[]),
+      ]);
+      setCoins(c);coinsRef.current=c;
+      const withUid=col.map(x=>({...x,uid:x.uid||uid()}));
+      setCollection(withUid);collRef.current=withUid;
+      setWins(w);winsRef.current=w;setLastDaily(ld);
+      setQuestStats(qs||{botWins:0,kos:0,damage:0,cards:0,packs:0,dailies:0});
+      setClaimedQuests(cq||[]);
+      if(st?.length>0){setStarterPool(st);setLoading(false);return;}
+      try{
+        const res=await fetch(`${API}/cards?q=supertype:Pok%C3%A9mon%20subtypes:Basic&pageSize=60&orderBy=name`);
+        const data=await res.json();
+        const cards=(data.data||[]).filter(c=>(c.attacks?.length||0)>0&&c.images?.small).map(normalizeApiCard);
+        const pool=cards.length>0?cards:FBP.map(p=>({...p,uid:uid()}));
+        setStarterPool(pool);await save("pc5_starters",pool);
+      }catch{setStarterPool(FBP.map(p=>({...p,uid:uid()})));}
+      setLoading(false);
+    }
+    init();
+  },[]);
+
+  const isDailyAvailable=!lastDaily||(Date.now()-new Date(lastDaily).getTime()>86400000);
+
+  const handleDaily=async()=>{
+    const nc=coinsRef.current+DAILY_COINS,now=new Date().toISOString();
+    setCoins(nc);setLastDaily(now);
+    const nqs={...questRef.current,dailies:(questRef.current.dailies||0)+1};
+    setQuestStats(nqs);
+    await save("pc5_coins",nc);await save("pc5_daily",now);await save("pc5_questStats",nqs);
+  };
+
+  const handleBuyPack=async(pack)=>{
+    if(!pack){setPackAnim(false);setNewCards([]);return;}
+    if(coinsRef.current<pack.cost)return;
+    let cards=[];
+    try{
+      const res=await fetch(`${API}/cards?q=${encodeURIComponent(pack.query)}&pageSize=20&page=${Math.ceil(Math.random()*6)}`);
+      const data=await res.json();
+      const pool=(data.data||[]).filter(c=>c.images?.small).map(normalizeApiCard);
+      cards=shuffle(pool).slice(0,pack.count||5);
+    }catch{}
+    while(cards.length<(pack.count||5))cards.push({...FBP[Math.floor(Math.random()*FBP.length)],uid:uid()});
+    const newCol=[...collRef.current,...cards],nc=coinsRef.current-pack.cost;
+    setCollection(newCol);collRef.current=newCol;setCoins(nc);setNewCards(cards);setPackAnim(true);
+    const nqs={...questRef.current,cards:newCol.filter(c=>c.supertype==="Pokémon").length,packs:(questRef.current.packs||0)+1};
+    setQuestStats(nqs);questRef.current=nqs;
+    await save("pc5_collection",newCol);await save("pc5_coins",nc);await save("pc5_questStats",nqs);
+  };
+
+  const handleStartBattle=mode=>{
+    winHandled.current=false;
+    const myPokes=collRef.current.filter(c=>c.supertype==="Pokémon");
+    const playerPool=myPokes.length>=4?myPokes:[...myPokes,...shuffle(FBP).slice(0,10-myPokes.length).map(p=>({...p,uid:uid()}))];
+    const botPool=shuffle([...FBP,...starterPool.filter(c=>c.supertype==="Pokémon")]).slice(0,16).map(p=>({...p,uid:uid()}));
+    const b=initBattle(playerPool,botPool,mode);
+    if(!b)return;
+    setBattle(b);setScreen("game");
+  };
+
+  const dispatch=React.useCallback(action=>{
+    setBattle(prev=>{if(!prev||prev.winner)return prev;return battleReducer(prev,action);});
+  },[]);
+
+  // Bot turn
+  React.useEffect(()=>{
+    if(!battle||battle.turn!=="bot"||battle.winner||battle.mode!=="bot")return;
+    const t=setTimeout(()=>{
+      const ns=botDoTurn(battle);setBattle(ns);
+      if(ns.winner==="player"&&!winHandled.current){
+        winHandled.current=true;
+        const nw=winsRef.current+1,nc=coinsRef.current+WIN_COINS;
+        setWins(nw);setCoins(nc);
+        // Update quest stats
+        const bs=ns.statsThisBattle||{};
+        const nqs={...questRef.current,
+          botWins:(questRef.current.botWins||0)+1,
+          kos:(questRef.current.kos||0)+(bs.kos||0),
+          damage:(questRef.current.damage||0)+(bs.damage||0),
+        };
+        setQuestStats(nqs);questRef.current=nqs;
+        save("pc5_wins",nw);save("pc5_coins",nc);save("pc5_questStats",nqs);
+      }
+    },1400);
+    return()=>clearTimeout(t);
+  },[battle?.turn,battle?.winner]);
+
+  const handleBattleEnd=()=>{setBattle(null);setScreen("home");};
+
+  const handleClaimQuest=async(quest)=>{
+    const nc=coinsRef.current+quest.reward;
+    setCoins(nc);coinsRef.current=nc;
+    const ncq=[...claimedQuests,quest.id];
+    setClaimedQuests(ncq);
+    await save("pc5_coins",nc);await save("pc5_claimed",ncq);
+  };
+
+  const NAV=[{id:"home",i:"🏠",l:"Home"},{id:"collection",i:"🃏",l:"Cards"},{id:"shop",i:"🛍️",l:"Shop"},{id:"battle",i:"⚔️",l:"Battle"},{id:"quests",i:"📋",l:"Quests"}];
+  const TITLE={home:"⚡ PokéCards!",collection:"🃏 My Cards",shop:"🛍️ Shop",battle:"⚔️ Battle",quests:"📋 Quests",pokedex:"📖 Pokédex"};
+
+  const claimable=QUESTS.filter(q=>{const prog=Math.min(questStats[q.stat]||0,q.target);return prog>=q.target&&!claimedQuests.includes(q.id);}).length;
+
+  if(loading)return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#0f0c29,#302b63,#24243e)"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:72,animation:"bounce 1s infinite"}}>⚡</div>
+        <p style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#FFD700",margin:"12px 0"}}>Loading PokéCards...</p>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",maxWidth:440,margin:"0 auto",overflow:"hidden",background:"linear-gradient(160deg,#0f0c29 0%,#302b63 55%,#24243e 100%)"}}>
+      {screen!=="game"&&(
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.25)",backdropFilter:"blur(12px)",zIndex:10,flexShrink:0}}>
+          {!["home"].includes(screen)?<button onClick={()=>setScreen("home")} style={{color:"rgba(255,255,255,0.4)",fontSize:13,fontWeight:700,background:"none",border:"none",cursor:"pointer"}}>← Back</button>:<div style={{width:56}}/>}
+          <span style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:16}}>{TITLE[screen]||"PokéCards"}</span>
+          <span style={{background:"linear-gradient(135deg,#FFD700,#FF8C00)",color:"#000",fontWeight:900,fontSize:12,padding:"3px 10px",borderRadius:99}}>🪙 {coins}</span>
+        </div>
+      )}
+      <div style={{flex:1,overflowY:"auto",position:"relative",zIndex:5,display:screen==="game"?"flex":"block",flexDirection:"column"}}>
+        {screen==="home"&&<HomeScreen coins={coins} collection={collection} wins={wins} onDaily={handleDaily} dailyAvailable={isDailyAvailable} navigate={setScreen} questStats={questStats} claimedQuests={claimedQuests}/>}
+        {screen==="collection"&&<CollectionScreen collection={collection}/>}
+        {screen==="shop"&&<ShopScreen coins={coins} onBuyPack={handleBuyPack} packAnim={packAnim} newCards={newCards}/>}
+        {screen==="battle"&&<BattleSelect onStart={handleStartBattle} collection={collection}/>}
+        {screen==="quests"&&<QuestScreen questStats={questStats} claimedQuests={claimedQuests} onClaim={handleClaimQuest}/>}
+        {screen==="pokedex"&&<PokedexScreen collection={collection}/>}
+        {screen==="game"&&battle&&(
+          <div style={{display:"flex",flexDirection:"column",flex:1}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 12px",background:"rgba(0,0,0,0.45)",borderBottom:"1px solid rgba(255,255,255,0.07)",flexShrink:0,zIndex:10}}>
+              <button onClick={handleBattleEnd} style={{color:"rgba(255,255,255,0.3)",fontSize:12,background:"none",border:"none",cursor:"pointer"}}>✕ Forfeit</button>
+              <span style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:14}}>⚔️ {battle.mode==="passplay"?"Pass & Play":"vs Bot"}</span>
+              <span style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{battle.winner?"🎮 Over":battle.turn==="player"?"👤 Your turn":"🤖 Bot..."}</span>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:7}}>
+              <BattleGame state={battle} dispatch={dispatch} onEnd={handleBattleEnd}/>
+            </div>
+          </div>
+        )}
+      </div>
+      {screen!=="game"&&(
+        <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.35)",backdropFilter:"blur(12px)",zIndex:10,flexShrink:0}}>
+          {NAV.map(n=>(
+            <button key={n.id} onClick={()=>setScreen(n.id)} style={{flex:1,padding:"9px 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",color:screen===n.id?"#FFD700":"rgba(255,255,255,0.3)",position:"relative"}}>
+              <span style={{fontSize:18}}>{n.i}</span>
+              <span style={{fontSize:9,fontWeight:700}}>{n.l}</span>
+              {n.id==="quests"&&claimable>0&&<span style={{position:"absolute",top:6,right:8,width:8,height:8,borderRadius:"50%",background:"#EF4444",boxShadow:"0 0 6px rgba(239,68,68,0.7)"}}/>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const root=ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
