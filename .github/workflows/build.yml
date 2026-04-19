@@ -34,7 +34,6 @@ jobs:
         run: |
           set -e
           mkdir -p apk-build/www
-          # Source the standalone game — prefer root game.html, then public/game.html
           if [ -f game.html ]; then
             cp game.html apk-build/www/index.html
           elif [ -f public/game.html ]; then
@@ -49,9 +48,6 @@ jobs:
           npm install --save-exact --no-audit --no-fund \
             @capacitor/core@6.2.1 @capacitor/cli@6.2.1 @capacitor/android@6.2.1
 
-          node -e "['@capacitor/core','@capacitor/cli','@capacitor/android'].forEach((pkg) => console.log(pkg, require('./node_modules/' + pkg + '/package.json').version))"
-
-          # Capacitor config
           cat > capacitor.config.json <<'EOF'
           {
             "appId": "com.lovable.pokemontcg",
@@ -70,7 +66,6 @@ jobs:
           KS_PASS=$(openssl rand -hex 24)
           KS_PATH="${GITHUB_WORKSPACE}/apk-build/release.keystore"
           echo "::add-mask::$KS_PASS"
-          # Use the same password for keystore and key to avoid PKCS12 key/store password mismatch issues.
           keytool -genkeypair -v \
             -keystore "$KS_PATH" \
             -storetype PKCS12 \
@@ -78,11 +73,8 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass "$KS_PASS" -keypass "$KS_PASS" \
             -dname "CN=Pokemon TCG, OU=Lovable, O=Lovable, L=NA, S=NA, C=US"
-          # Export as env so subsequent steps don't go through ${{ }} shell interpolation.
-          {
-            echo "KS_PATH=$KS_PATH"
-            echo "KS_PASS=$KS_PASS"
-          } >> "$GITHUB_ENV"
+          echo "KS_PATH=$KS_PATH" >> "$GITHUB_ENV"
+          echo "KS_PASS=$KS_PASS" >> "$GITHUB_ENV"
 
       - name: Build release APK (unsigned)
         working-directory: apk-build/android
