@@ -1,0 +1,1540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#1a103d" />
+<title>Pokémon TCG Pocket Battles</title>
+<style>
+  /* ---------- DESIGN TOKENS ---------- */
+  :root{
+    --bg-1:#1a103d; --bg-2:#3a1d6e; --bg-3:#0b2447;
+    --panel:rgba(255,255,255,.08); --panel-2:rgba(255,255,255,.14);
+    --ink:#fff; --ink-dim:#cdbff5; --ink-mute:#8c87b8;
+    --gold:#ffd24a; --gold-2:#ffae3a;
+    --red:#ff5577; --green:#3cd07a; --blue:#48a8ff; --purple:#b066ff;
+    --grass:#78c850; --fire:#f08030; --water:#6890f0; --lightning:#f8d030;
+    --psychic:#f85888; --fighting:#c03028; --darkness:#705848; --metal:#b8b8d0;
+    --fairy:#ee99ac; --dragon:#7038f8; --colorless:#a8a878;
+    --rounded:14px; --shadow-lg:0 10px 30px rgba(0,0,0,.45);
+    --grad-hero:linear-gradient(135deg,#3a1d6e 0%,#1a103d 50%,#0b2447 100%);
+    --grad-gold:linear-gradient(135deg,#ffd24a,#ffae3a);
+    --grad-pack-base:linear-gradient(160deg,#ff5577,#b066ff);
+    --grad-pack-jungle:linear-gradient(160deg,#3cd07a,#48a8ff);
+    --grad-pack-modern:linear-gradient(160deg,#ffd24a,#ff5577);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--grad-hero);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overflow-x:hidden;overscroll-behavior:none}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(60% 40% at 20% 10%,rgba(176,102,255,.25),transparent 60%),
+               radial-gradient(50% 35% at 90% 90%,rgba(72,168,255,.25),transparent 60%);z-index:-1}
+  button{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer}
+  input,select,textarea{font:inherit}
+  img{display:block;max-width:100%}
+  .app{padding:14px 14px 96px;max-width:560px;margin:0 auto;min-height:100vh}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{display:flex;align-items:center;gap:10px;padding:10px 4px 14px;position:sticky;top:0;
+    background:linear-gradient(180deg,rgba(26,16,61,.95),rgba(26,16,61,.7) 80%,transparent);
+    backdrop-filter:blur(8px);z-index:10;margin:-14px -14px 8px;padding-left:14px;padding-right:14px}
+  .logo{font-weight:900;font-size:18px;letter-spacing:.5px;
+    background:linear-gradient(90deg,#ffd24a,#ff5577,#b066ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .coins{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--grad-gold);
+    color:#3a1d00;font-weight:800;padding:6px 12px;border-radius:999px;box-shadow:0 4px 12px rgba(255,170,58,.4)}
+  .coins .ico{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff8c4,#b07a00);
+    border:2px solid #fff;display:inline-block}
+
+  /* ---------- BOTTOM NAV ---------- */
+  .nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;
+    background:rgba(11,15,40,.85);backdrop-filter:blur(16px);padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+    border-top:1px solid rgba(255,255,255,.08);z-index:50}
+  .nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:6px 4px;color:var(--ink-mute);font-size:10px;font-weight:600;border-radius:10px}
+  .nav button.active{color:var(--ink);background:rgba(255,255,255,.06)}
+  .nav .emoji{font-size:22px;line-height:1}
+
+  /* ---------- VIEWS ---------- */
+  .view{display:none;animation:fadeIn .25s ease}
+  .view.active{display:block}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  h1,h2,h3{margin:0 0 10px}
+  h1{font-size:22px}
+  h2{font-size:18px;margin-top:18px}
+  .muted{color:var(--ink-dim);font-size:13px;line-height:1.45}
+
+  /* ---------- CARDS / PANELS ---------- */
+  .panel{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:var(--rounded);
+    padding:14px;margin-bottom:12px;box-shadow:var(--shadow-lg)}
+  .panel.glow{background:linear-gradient(135deg,rgba(176,102,255,.25),rgba(72,168,255,.18));
+    border-color:rgba(255,255,255,.18)}
+  .row{display:flex;gap:8px;align-items:center}
+  .row.between{justify-content:space-between}
+  .grid{display:grid;gap:10px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .grid.cards{grid-template-columns:repeat(3,1fr);gap:8px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:11px 16px;border-radius:12px;font-weight:800;letter-spacing:.3px;
+    background:var(--panel-2);color:var(--ink);border:1px solid rgba(255,255,255,.12);
+    transition:transform .12s ease,filter .12s ease}
+  .btn:active{transform:scale(.96)}
+  .btn.primary{background:linear-gradient(135deg,#ff5577,#b066ff);box-shadow:0 6px 18px rgba(176,102,255,.45);border-color:transparent}
+  .btn.gold{background:var(--grad-gold);color:#3a1d00;border-color:transparent;box-shadow:0 6px 18px rgba(255,170,58,.4)}
+  .btn.green{background:linear-gradient(135deg,#3cd07a,#1aa657);border-color:transparent}
+  .btn.danger{background:linear-gradient(135deg,#ff5577,#c0285a);border-color:transparent}
+  .btn[disabled]{opacity:.5;pointer-events:none}
+  .btn.small{padding:7px 11px;font-size:12px;border-radius:9px}
+  .btn.block{display:flex;width:100%}
+
+  .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;
+    font-size:11px;font-weight:700;background:rgba(255,255,255,.12)}
+  .pill.gold{background:var(--grad-gold);color:#3a1d00}
+
+  /* ---------- CARD VISUAL ---------- */
+  .card{position:relative;aspect-ratio:2.5/3.5;border-radius:10px;overflow:hidden;
+    background:#222;cursor:pointer;border:2px solid rgba(255,255,255,.15);
+    box-shadow:0 4px 10px rgba(0,0,0,.35);transition:transform .15s}
+  .card:active{transform:scale(.97)}
+  .card img{width:100%;height:100%;object-fit:cover}
+  .card .qty{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;
+    font-size:11px;font-weight:800;padding:2px 6px;border-radius:8px}
+  .card.holo::after{content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:color-dodge;
+    background:conic-gradient(from 0deg,#ff00aa,#00ffff,#ffea00,#ff00aa);opacity:.35;
+    animation:holoSpin 4s linear infinite}
+  .card.rare-rare::before{content:"";position:absolute;inset:0;border-radius:8px;
+    box-shadow:inset 0 0 0 2px var(--gold);pointer-events:none}
+  .card.rare-ultra::before{content:"";position:absolute;inset:0;border-radius:8px;
+    box-shadow:inset 0 0 0 3px #b066ff,0 0 18px rgba(176,102,255,.7);pointer-events:none}
+  @keyframes holoSpin{to{transform:rotate(360deg)}}
+
+  /* fallback card art when image missing */
+  .card .fallback{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;
+    padding:8px;background:linear-gradient(160deg,#444,#111);font-size:11px}
+  .card .fallback .name{font-weight:800}
+  .card .fallback .hp{align-self:flex-end;color:#ffaaaa;font-weight:800}
+
+  /* ---------- PACK ---------- */
+  .pack{aspect-ratio:2/3;border-radius:14px;position:relative;overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;justify-content:space-between;
+    padding:14px;color:#fff;font-weight:800}
+  .pack{background:linear-gradient(160deg,#5b6cff,#241a6b)}
+  .pack.era-classic{background:linear-gradient(160deg,#ffcc33,#cc4422)}
+  .pack.era-neo{background:linear-gradient(160deg,#9be7ff,#1a4a8a)}
+  .pack.era-ex{background:linear-gradient(160deg,#ff7b3a,#7a1414)}
+  .pack.era-dp{background:linear-gradient(160deg,#c0c0e0,#2a2a55)}
+  .pack.era-hgss{background:linear-gradient(160deg,#ffd84a,#7a4a00);color:#2a1700}
+  .pack.era-bw{background:linear-gradient(160deg,#f5f5f5,#1a1a1a);color:#1a1a1a}
+  .pack.era-xy{background:linear-gradient(160deg,#3aa0ff,#a13aff)}
+  .pack.era-sm{background:linear-gradient(160deg,#ff5a8a,#3a4ae0)}
+  .pack.era-swsh{background:linear-gradient(160deg,#46d9ff,#a23aff)}
+  .pack.era-modern{background:linear-gradient(160deg,#ff3a6e,#3a1aff)}
+  .pack .pname{font-size:16px;text-shadow:0 2px 6px rgba(0,0,0,.4);line-height:1.15}
+  .pack .pera{font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:1px}
+  .pack .price{align-self:flex-start;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:999px;font-size:13px}
+  .pack .shine{position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.45) 50%,transparent 60%);
+    transform:translateX(-100%);animation:shine 3.5s ease-in-out infinite}
+  @keyframes shine{0%,60%{transform:translateX(-100%)}80%,100%{transform:translateX(120%)}}
+
+  /* ---------- PACK OPENING OVERLAY ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(5,3,20,.85);backdrop-filter:blur(10px);
+    display:none;align-items:center;justify-content:center;z-index:200;padding:20px;flex-direction:column;gap:14px}
+  .overlay.show{display:flex}
+  .opened-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:480px;width:100%}
+  .opened-grid .card{animation:popIn .45s cubic-bezier(.2,.9,.4,1.4) both}
+  .opened-grid .card:nth-child(1){animation-delay:.05s}
+  .opened-grid .card:nth-child(2){animation-delay:.18s}
+  .opened-grid .card:nth-child(3){animation-delay:.31s}
+  .opened-grid .card:nth-child(4){animation-delay:.44s}
+  .opened-grid .card:nth-child(5){animation-delay:.57s}
+  @keyframes popIn{from{transform:translateY(40px) rotateY(180deg) scale(.6);opacity:0}
+    to{transform:none;opacity:1}}
+
+  /* ---------- COIN FLIP ---------- */
+  .coin-flip{width:80px;height:80px;border-radius:50%;background:var(--grad-gold);
+    color:#3a1d00;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;
+    box-shadow:0 8px 24px rgba(255,170,58,.5);transform-style:preserve-3d;perspective:600px}
+  .coin-flip.flipping{animation:coinSpin 1.1s ease-out}
+  @keyframes coinSpin{0%{transform:rotateY(0)}100%{transform:rotateY(1800deg)}}
+
+  /* ---------- BATTLE BOARD ---------- */
+  .board{background:linear-gradient(180deg,rgba(72,168,255,.12),rgba(176,102,255,.12));
+    border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(255,255,255,.08)}
+  .side{display:flex;flex-direction:column;gap:6px}
+  .side .label{font-size:11px;color:var(--ink-mute);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+  .bench{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+  .slot{aspect-ratio:2.5/3.5;border-radius:8px;border:1px dashed rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink-mute);position:relative;overflow:hidden}
+  .slot.has{border-style:solid;border-color:rgba(255,255,255,.3);cursor:pointer;background:#222}
+  .slot.active{box-shadow:0 0 0 2px var(--gold),0 0 14px rgba(255,210,74,.5)}
+  .slot .hpbar{position:absolute;left:2px;right:2px;bottom:2px;height:4px;background:rgba(0,0,0,.6);border-radius:3px;overflow:hidden}
+  .slot .hpbar > div{height:100%;background:linear-gradient(90deg,#3cd07a,#ffd24a,#ff5577);transition:width .3s}
+  .slot .energy{position:absolute;top:2px;left:2px;display:flex;gap:1px}
+  .slot .energy span{width:8px;height:8px;border-radius:50%;border:1px solid #fff;background:var(--colorless)}
+  .slot .status{position:absolute;top:2px;right:2px;font-size:11px}
+  .active-area{display:flex;gap:10px;align-items:center}
+  .active-area .slot{flex:1;max-width:100px;aspect-ratio:2.5/3.5}
+  .prizes{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;width:90px}
+  .prize{aspect-ratio:2.5/3.5;border-radius:4px;background:linear-gradient(135deg,#48a8ff,#1a103d);border:1px solid rgba(255,255,255,.2)}
+  .prize.taken{opacity:.15}
+
+  .hand{display:flex;gap:6px;overflow-x:auto;padding:8px 4px;scrollbar-width:none}
+  .hand::-webkit-scrollbar{display:none}
+  .hand .card{flex:0 0 70px;aspect-ratio:2.5/3.5}
+
+  .battle-log{max-height:120px;overflow-y:auto;font-size:11px;color:var(--ink-dim);
+    background:rgba(0,0,0,.3);border-radius:8px;padding:8px;line-height:1.4}
+  .battle-log p{margin:0 0 4px}
+  .battle-log .you{color:#9ee5ff}
+  .battle-log .bot{color:#ffaa9e}
+  .battle-log .sys{color:var(--gold)}
+
+  /* ---------- TOAST ---------- */
+  .toast-wrap{position:fixed;top:60px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:300}
+  .toast{background:rgba(0,0,0,.85);color:#fff;padding:10px 16px;border-radius:999px;
+    font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.4);animation:toastIn .3s ease, toastOut .3s ease 2.4s forwards}
+  .toast.gold{background:var(--grad-gold);color:#3a1d00}
+  @keyframes toastIn{from{transform:translateY(-20px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes toastOut{to{transform:translateY(-20px);opacity:0}}
+
+  /* ---------- MODAL ---------- */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
+    display:none;align-items:flex-end;justify-content:center;z-index:250;padding:16px}
+  .modal.show{display:flex}
+  .modal .sheet{width:100%;max-width:480px;background:linear-gradient(160deg,#2a1860,#160a3a);
+    border-radius:18px 18px 12px 12px;padding:18px;border:1px solid rgba(255,255,255,.1);max-height:85vh;overflow-y:auto}
+  .modal .close{position:sticky;top:0;float:right;background:rgba(255,255,255,.15);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:800}
+
+  /* ---------- LOADER ---------- */
+  .loader{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.2);
+    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* energy badges */
+  .e{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+    font-size:10px;font-weight:800;color:#fff;border:2px solid #fff;margin-right:2px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .e.grass{background:var(--grass)} .e.fire{background:var(--fire)}
+  .e.water{background:var(--water)} .e.lightning{background:var(--lightning);color:#3a1d00}
+  .e.psychic{background:var(--psychic)} .e.fighting{background:var(--fighting)}
+  .e.darkness{background:var(--darkness)} .e.metal{background:var(--metal);color:#3a1d00}
+  .e.fairy{background:var(--fairy)} .e.dragon{background:var(--dragon)}
+  .e.colorless{background:var(--colorless)}
+
+  .quest{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(0,0,0,.2);border-radius:10px;margin-bottom:6px}
+  .quest .progress{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+  .quest .progress > div{height:100%;background:var(--grad-gold);transition:width .4s}
+  .quest .reward{font-weight:800;color:var(--gold)}
+  .quest.done{opacity:.7}
+  .quest.done .reward{color:var(--green)}
+
+  .filter-bar{display:flex;gap:6px;overflow-x:auto;padding:6px 0;scrollbar-width:none}
+  .filter-bar::-webkit-scrollbar{display:none}
+  .filter-bar .pill{flex:0 0 auto;cursor:pointer}
+  .filter-bar .pill.active{background:var(--grad-gold);color:#3a1d00}
+
+  .deck-list-item{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:10px;margin-bottom:6px;font-size:13px}
+
+  /* tilt-shine */
+  .tilt-card{position:relative;width:200px;aspect-ratio:2.5/3.5;border-radius:14px;overflow:hidden;margin:0 auto;
+    box-shadow:0 14px 40px rgba(0,0,0,.5)}
+  .tilt-card img{width:100%;height:100%;object-fit:cover}
+  .tilt-card::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);
+    transform:translateX(-100%);animation:shine 2.5s ease-in-out infinite}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="logo">⚡ Pokémon TCG</div>
+    <div class="coins"><span class="ico"></span><span id="coinAmt">0</span></div>
+  </div>
+
+  <!-- HOME -->
+  <section class="view active" id="view-home">
+    <div class="panel glow">
+      <div class="row between">
+        <div>
+          <h1 style="margin-bottom:4px">Welcome, Trainer!</h1>
+          <div class="muted" id="dailyText">Loading…</div>
+        </div>
+        <div style="font-size:36px">⚡</div>
+      </div>
+      <div style="height:10px"></div>
+      <button class="btn gold block" id="claimDaily">Claim daily bonus</button>
+    </div>
+
+    <div class="grid cols-2">
+      <button class="panel" style="text-align:left;padding:18px" onclick="nav('shop')">
+        <div style="font-size:28px">📦</div>
+        <div style="font-weight:800;margin-top:4px">Open Pack</div>
+        <div class="muted">Buy boosters</div>
+      </button>
+      <button class="panel" style="text-align:left;padding:18px" onclick="nav('battle')">
+        <div style="font-size:28px">⚔️</div>
+        <div style="font-weight:800;margin-top:4px">Battle Bot</div>
+        <div class="muted">Test your deck</div>
+      </button>
+    </div>
+
+    <h2>Active Quests</h2>
+    <div id="homeQuests"></div>
+
+    <h2>Quick Stats</h2>
+    <div class="panel">
+      <div class="row between"><span>Cards collected</span><b id="statCards">0</b></div>
+      <div class="row between"><span>Battles won</span><b id="statWins">0</b></div>
+      <div class="row between"><span>Packs opened</span><b id="statPacks">0</b></div>
+    </div>
+  </section>
+
+  <!-- SHOP -->
+  <section class="view" id="view-shop">
+    <h1>Booster Packs</h1>
+    <div class="muted">Each pack contains 5 cards including a guaranteed rare.</div>
+    <div style="height:10px"></div>
+    <div class="grid cols-3" id="packGrid"></div>
+
+    <h2>Sell Cards for Coins</h2>
+    <div class="muted">Convert duplicates from your Binder into coins (use the card detail screen).</div>
+  </section>
+
+  <!-- BINDER -->
+  <section class="view" id="view-binder">
+    <h1>Binder</h1>
+    <input id="binderSearch" placeholder="Search cards…" style="width:100%;padding:10px;border-radius:10px;background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.1);margin-bottom:8px" />
+    <div class="filter-bar" id="binderFilters"></div>
+    <div class="muted" id="binderCount">0 cards</div>
+    <div style="height:8px"></div>
+    <div class="grid cards" id="binderGrid"></div>
+  </section>
+
+  <!-- DECKS -->
+  <section class="view" id="view-decks">
+    <h1>Deck Builder</h1>
+    <button class="btn primary block" onclick="newDeck()">+ New Deck</button>
+    <div style="height:12px"></div>
+    <div id="deckList"></div>
+  </section>
+
+  <!-- BATTLE -->
+  <section class="view" id="view-battle">
+    <h1>Battle vs Bot</h1>
+    <div id="battleHome">
+      <div class="panel">
+        <div class="muted">Pick a legal deck and challenge a bot trainer. Standard rules: 6 prize cards, status effects, coin flips, weakness/resistance.</div>
+        <div style="height:10px"></div>
+        <div id="battleDeckPicker"></div>
+      </div>
+    </div>
+    <div id="battleArea" style="display:none"></div>
+  </section>
+
+  <!-- QUESTS -->
+  <section class="view" id="view-quests">
+    <h1>Quests & Achievements</h1>
+    <h2>Daily Quests</h2>
+    <div id="dailyQuests"></div>
+    <h2>Achievements</h2>
+    <div id="achievementsList"></div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="view" id="view-profile">
+    <h1>Profile</h1>
+    <div class="panel">
+      <div class="row between"><span>Battles won</span><b id="pStatWins">0</b></div>
+      <div class="row between"><span>Battles lost</span><b id="pStatLosses">0</b></div>
+      <div class="row between"><span>Total cards</span><b id="pStatCards">0</b></div>
+      <div class="row between"><span>Unique cards</span><b id="pStatUnique">0</b></div>
+      <div class="row between"><span>Packs opened</span><b id="pStatPacks">0</b></div>
+      <div class="row between"><span>Coins earned (all-time)</span><b id="pStatCoins">0</b></div>
+      <div class="row between"><span>Favorite type</span><b id="pStatType">—</b></div>
+    </div>
+    <button class="btn danger block" onclick="resetGame()">Reset everything</button>
+  </section>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="nav" id="nav">
+  <button data-view="home" class="active"><span class="emoji">🏠</span>Home</button>
+  <button data-view="shop"><span class="emoji">📦</span>Shop</button>
+  <button data-view="binder"><span class="emoji">📚</span>Binder</button>
+  <button data-view="decks"><span class="emoji">🛠️</span>Decks</button>
+  <button data-view="battle"><span class="emoji">⚔️</span>Battle</button>
+  <button data-view="quests"><span class="emoji">🏆</span>Quests</button>
+  <button data-view="profile"><span class="emoji">👤</span>Me</button>
+</nav>
+
+<div class="overlay" id="packOverlay">
+  <h2 style="margin:0">You pulled!</h2>
+  <div class="opened-grid" id="openedGrid"></div>
+  <button class="btn gold" onclick="closePack()">Add to binder</button>
+</div>
+
+<div class="modal" id="cardModal">
+  <div class="sheet" id="cardModalBody"></div>
+</div>
+
+<div class="modal" id="genericModal">
+  <div class="sheet" id="genericModalBody"></div>
+</div>
+
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(8,6,24,.78);backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:inherit;text-align:center;padding:24px">
+  <div style="width:64px;height:64px;border-radius:50%;border:5px solid rgba(255,255,255,.15);border-top-color:#ffd166;animation:spin 0.9s linear infinite"></div>
+  <div id="loadingText" style="margin-top:18px;font-weight:700;font-size:18px">Working…</div>
+  <div id="loadingSub" style="margin-top:6px;opacity:.7;font-size:13px">Please wait a moment</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+/* ============================================================
+   POKÉMON TCG POCKET — Single-File Game
+   ============================================================ */
+
+/* ---------- STATE ---------- */
+const LS_KEY = 'ptcg_state_v1';
+const CARDS_KEY = 'ptcg_cards_v1';
+const DEFAULT_STATE = {
+  coins: 200, coinsEarned: 200, lastDaily: 0,
+  collection: {}, // cardId -> qty
+  decks: [],
+  packsOpened: 0, wins: 0, losses: 0,
+  quests: [], achievements: [],
+  inflictedStatuses: 0, // for quests
+  installedAt: Date.now()
+};
+let S = loadState();
+let CARDS = loadCards(); // array of card objects normalized
+let CARDS_BY_ID = {};
+let API_LOADED = false;
+
+function loadState(){
+  try{ return Object.assign({},DEFAULT_STATE,JSON.parse(localStorage.getItem(LS_KEY))||{});}
+  catch{ return {...DEFAULT_STATE} }
+}
+function saveState(){ localStorage.setItem(LS_KEY,JSON.stringify(S)); refreshUI(); }
+function loadCards(){
+  try{ const c=JSON.parse(localStorage.getItem(CARDS_KEY)); if(c&&c.length) return c; }catch{}
+  return null;
+}
+function saveCards(){ localStorage.setItem(CARDS_KEY,JSON.stringify(CARDS)); }
+
+/* ---------- CARD DATA ----------
+   Try fetching from pokemontcg.io; if offline, fall back to baked-in
+   minimal set so the game still works. */
+const FALLBACK_CARDS = (() => {
+  // 24 hand-crafted cards covering basics + a couple of evolutions and trainers
+  const t=(supertype,name,hp,types,attacks,opts={})=>({
+    id:'fb-'+name.toLowerCase().replace(/\W+/g,'-'),
+    name,supertype,types,hp,
+    rarity:opts.rarity||'Common',
+    set:'starter', images:{small:'',large:''},
+    attacks:attacks||[],
+    weaknesses:opts.weak?[{type:opts.weak,value:'×2'}]:[],
+    resistances:opts.res?[{type:opts.res,value:'-30'}]:[],
+    retreatCost:opts.retreat||['Colorless'],
+    evolvesFrom:opts.evolvesFrom||null,
+    subtypes:opts.subtypes||['Basic']
+  });
+  const tr=(name,text,effect)=>({id:'fb-tr-'+name.toLowerCase().replace(/\W+/g,'-'),
+    name,supertype:'Trainer',types:[],hp:0,rarity:'Uncommon',set:'starter',images:{},
+    rules:[text], trainerEffect:effect, subtypes:['Item']});
+  const en=(type)=>({id:'fb-en-'+type.toLowerCase(),name:type+' Energy',supertype:'Energy',
+    types:[type],hp:0,rarity:'Common',set:'starter',images:{},subtypes:['Basic'],energyType:type});
+  return [
+    t('Pokémon','Pikachu',60,['Lightning'],
+      [{name:'Thunder Shock',cost:['Lightning','Colorless'],damage:'30',text:'Flip a coin. If tails, this Pokémon is now Paralyzed.',flip:'paralyze-self-on-tails'}],
+      {weak:'Fighting',retreat:['Colorless']}),
+    t('Pokémon','Raichu',110,['Lightning'],
+      [{name:'Thunderbolt',cost:['Lightning','Lightning','Colorless'],damage:'90',text:'Discard all Energy from this Pokémon.',effect:'discard-all-energy'}],
+      {weak:'Fighting',retreat:['Colorless'],evolvesFrom:'Pikachu',subtypes:['Stage 1']}),
+    t('Pokémon','Charmander',60,['Fire'],
+      [{name:'Ember',cost:['Fire','Colorless'],damage:'30'}],{weak:'Water'}),
+    t('Pokémon','Charmeleon',90,['Fire'],
+      [{name:'Slash',cost:['Fire','Colorless','Colorless'],damage:'60'}],
+      {weak:'Water',evolvesFrom:'Charmander',subtypes:['Stage 1']}),
+    t('Pokémon','Charizard',150,['Fire'],
+      [{name:'Fire Spin',cost:['Fire','Fire','Fire','Colorless'],damage:'170',text:'Discard 2 Energy.',effect:'discard-2-energy'}],
+      {weak:'Water',rarity:'Rare Holo',evolvesFrom:'Charmeleon',subtypes:['Stage 2'],retreat:['Colorless','Colorless']}),
+    t('Pokémon','Squirtle',60,['Water'],[{name:'Bubble',cost:['Water'],damage:'10',text:'Flip a coin. If heads, the Defending Pokémon is now Paralyzed.',flip:'paralyze-on-heads'}],{weak:'Lightning'}),
+    t('Pokémon','Wartortle',90,['Water'],[{name:'Water Gun',cost:['Water','Colorless'],damage:'40'}],{weak:'Lightning',evolvesFrom:'Squirtle',subtypes:['Stage 1']}),
+    t('Pokémon','Blastoise',150,['Water'],[{name:'Hydro Pump',cost:['Water','Water','Water'],damage:'100',text:'Does +20 damage for each extra Water Energy.',effect:'hydro-pump'}],{weak:'Lightning',rarity:'Rare Holo',evolvesFrom:'Wartortle',subtypes:['Stage 2']}),
+    t('Pokémon','Bulbasaur',60,['Grass'],[{name:'Vine Whip',cost:['Grass','Colorless'],damage:'30'}],{weak:'Fire'}),
+    t('Pokémon','Ivysaur',90,['Grass'],[{name:'Razor Leaf',cost:['Grass','Colorless','Colorless'],damage:'50'}],{weak:'Fire',evolvesFrom:'Bulbasaur',subtypes:['Stage 1']}),
+    t('Pokémon','Venusaur',150,['Grass'],[{name:'Solar Beam',cost:['Grass','Grass','Grass','Colorless'],damage:'120'}],{weak:'Fire',rarity:'Rare Holo',evolvesFrom:'Ivysaur',subtypes:['Stage 2']}),
+    t('Pokémon','Caterpie',40,['Grass'],[{name:'Tackle',cost:['Colorless'],damage:'10'}],{weak:'Fire'}),
+    t('Pokémon','Pidgey',50,['Colorless'],[{name:'Whirlwind',cost:['Colorless','Colorless'],damage:'20',text:'Switch defending Pokémon.',effect:'switch-defender'}]),
+    t('Pokémon','Rattata',40,['Colorless'],[{name:'Bite',cost:['Colorless'],damage:'20'}],{weak:'Fighting'}),
+    t('Pokémon','Machop',70,['Fighting'],[{name:'Karate Chop',cost:['Fighting','Colorless'],damage:'40'}],{weak:'Psychic'}),
+    t('Pokémon','Machoke',90,['Fighting'],[{name:'Submission',cost:['Fighting','Fighting','Colorless'],damage:'60',text:'This Pokémon does 20 damage to itself.',effect:'self-20'}],{weak:'Psychic',evolvesFrom:'Machop',subtypes:['Stage 1']}),
+    t('Pokémon','Abra',40,['Psychic'],[{name:'Psyshock',cost:['Psychic'],damage:'20',text:'Flip a coin. If heads, the Defending Pokémon is Paralyzed.',flip:'paralyze-on-heads'}]),
+    t('Pokémon','Gastly',50,['Psychic'],[{name:'Lick',cost:['Psychic'],damage:'10',text:'Flip a coin. If heads, the Defending Pokémon is now Paralyzed.',flip:'paralyze-on-heads'}]),
+    t('Pokémon','Koffing',50,['Psychic'],[{name:'Smog',cost:['Psychic'],damage:'10',text:'Flip a coin. If heads, defender is Poisoned.',flip:'poison-on-heads'}]),
+    t('Pokémon','Magikarp',30,['Water'],[{name:'Splash',cost:['Water'],damage:'10'}]),
+    t('Pokémon','Eevee',50,['Colorless'],[{name:'Tackle',cost:['Colorless'],damage:'10'}]),
+    t('Pokémon','Mewtwo',130,['Psychic'],[{name:'Psychic',cost:['Psychic','Psychic','Colorless'],damage:'60',text:'+10 damage per Energy on defender.',effect:'psychic-bonus'}],{weak:'Psychic',rarity:'Rare Holo'}),
+    tr('Potion','Heal 30 damage from one of your Pokémon.','potion'),
+    tr('Switch','Switch your Active Pokémon with one of your Benched Pokémon.','switch'),
+    tr('Professor\'s Research','Discard your hand and draw 5 cards.','prof-research'),
+    tr('Energy Search','Search your deck for a basic Energy and put it in your hand.','energy-search'),
+    en('Lightning'),en('Fire'),en('Water'),en('Grass'),en('Psychic'),en('Fighting'),en('Colorless')
+  ];
+})();
+
+// Real Pokémon TCG sets exposed in the shop. Each entry mirrors a real booster pack.
+const PACK_SETS = [
+  {id:'base1',    name:'Base Set',           price:120, era:'Classic'},
+  {id:'base2',    name:'Jungle',             price:120, era:'Classic'},
+  {id:'base3',    name:'Fossil',             price:120, era:'Classic'},
+  {id:'base4',    name:'Base Set 2',         price:140, era:'Classic'},
+  {id:'gym1',     name:'Gym Heroes',         price:160, era:'Classic'},
+  {id:'neo1',     name:'Neo Genesis',        price:160, era:'Neo'},
+  {id:'ex1',      name:'Ruby & Sapphire',    price:180, era:'EX'},
+  {id:'dp1',      name:'Diamond & Pearl',    price:180, era:'DP'},
+  {id:'hgss1',    name:'HeartGold SoulSilver',price:200,era:'HGSS'},
+  {id:'bw1',      name:'Black & White',      price:200, era:'BW'},
+  {id:'xy1',      name:'XY Base',            price:220, era:'XY'},
+  {id:'sm1',      name:'Sun & Moon',         price:240, era:'SM'},
+  {id:'swsh1',    name:'Sword & Shield',     price:260, era:'SWSH'},
+  {id:'swsh4',    name:'Vivid Voltage',      price:300, era:'SWSH'},
+  {id:'sv1',      name:'Scarlet & Violet',   price:320, era:'Modern'},
+  {id:'sv3pt5',   name:'151',                price:380, era:'Modern'}
+];
+
+async function ensureCards(){
+  if(CARDS && CARDS.length>50){ indexCards(); return; }
+  toast('Loading card database…');
+  try{
+    const all = [];
+    for(const s of PACK_SETS){
+      try{
+        const res = await fetch(`https://api.pokemontcg.io/v2/cards?q=set.id:${s.id}&pageSize=80`);
+        if(!res.ok) continue;
+        const j = await res.json();
+        (j.data||[]).forEach(c=>all.push(normalizeApiCard(c,s.id)));
+      }catch{}
+    }
+    if(all.length>50){
+      CARDS = all; saveCards(); API_LOADED=true;
+      toast('Loaded '+all.length+' cards!','gold');
+    } else {
+      throw new Error('insufficient');
+    }
+  }catch(e){
+    console.warn('API failed, using fallback',e);
+    CARDS = FALLBACK_CARDS; saveCards();
+    toast('Offline mode: using starter set');
+  }
+  indexCards();
+}
+function indexCards(){ CARDS_BY_ID={}; CARDS.forEach(c=>CARDS_BY_ID[c.id]=c); }
+
+function normalizeApiCard(c,setId){
+  return {
+    id:c.id, name:c.name, supertype:c.supertype,
+    subtypes:c.subtypes||[], types:c.types||[],
+    hp: parseInt(c.hp||'0',10)||0,
+    rarity:c.rarity||'Common', set:setId,
+    images:{small:c.images?.small||'',large:c.images?.large||''},
+    attacks:(c.attacks||[]).map(a=>({
+      name:a.name,cost:a.cost||[],damage:a.damage||'0',text:a.text||'',
+      flip: detectFlip(a.text||''),
+      effect: detectEffect(a.text||'')
+    })),
+    weaknesses:c.weaknesses||[],
+    resistances:c.resistances||[],
+    retreatCost:c.retreatCost||[],
+    evolvesFrom:c.evolvesFrom||null,
+    rules:c.rules||[],
+    trainerEffect: c.supertype==='Trainer' ? guessTrainerEffect(c.name,c.rules||[]) : null,
+    energyType: c.supertype==='Energy' ? (c.types?.[0]||'Colorless') : null
+  };
+}
+function detectFlip(text){
+  const t=text.toLowerCase();
+  if(/flip a coin.*paraly/.test(t)) return 'paralyze-on-heads';
+  if(/flip a coin.*poison/.test(t)) return 'poison-on-heads';
+  if(/flip a coin.*sleep/.test(t)) return 'sleep-on-heads';
+  if(/flip a coin.*confus/.test(t)) return 'confuse-on-heads';
+  if(/flip a coin.*burn/.test(t)) return 'burn-on-heads';
+  return null;
+}
+function detectEffect(text){
+  const t=text.toLowerCase();
+  if(/discard all.*energy/.test(t)) return 'discard-all-energy';
+  if(/discard \d+.*energy/.test(t)) return 'discard-2-energy';
+  if(/heal/.test(t)) return 'heal-30';
+  return null;
+}
+function guessTrainerEffect(name,rules){
+  const n=name.toLowerCase();
+  if(/potion/.test(n)) return 'potion';
+  if(/^switch/.test(n)) return 'switch';
+  if(/professor/.test(n)) return 'prof-research';
+  if(/energy search/.test(n)) return 'energy-search';
+  return 'noop';
+}
+
+/* ---------- UI ROUTING ---------- */
+function nav(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+view));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  if(view==='shop') renderShop();
+  if(view==='binder') renderBinder();
+  if(view==='decks') renderDecks();
+  if(view==='battle') renderBattleHome();
+  if(view==='quests') renderQuests();
+  if(view==='profile') renderProfile();
+  if(view==='home') renderHome();
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.view)));
+
+/* ---------- TOASTS / MODALS ---------- */
+function toast(msg,cls=''){
+  const t=document.createElement('div'); t.className='toast '+(cls||''); t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+function openModal(html,cb){
+  const m=document.getElementById('genericModal'), b=document.getElementById('genericModalBody');
+  b.innerHTML='<button class="close" onclick="closeModal()">×</button>'+html;
+  m.classList.add('show'); if(cb) cb();
+}
+function closeModal(){ document.getElementById('genericModal').classList.remove('show'); }
+document.getElementById('genericModal').addEventListener('click',e=>{ if(e.target.id==='genericModal') closeModal(); });
+document.getElementById('cardModal').addEventListener('click',e=>{ if(e.target.id==='cardModal') document.getElementById('cardModal').classList.remove('show'); });
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  const today=new Date().toDateString();
+  const last=new Date(S.lastDaily||0).toDateString();
+  const can= today!==last;
+  document.getElementById('dailyText').textContent= can ? 'Your daily 100 coin bonus is ready!' : 'Come back tomorrow for more coins.';
+  document.getElementById('claimDaily').disabled = !can;
+  document.getElementById('claimDaily').textContent = can ? '🎁 Claim 100 coins' : '✓ Claimed today';
+  document.getElementById('coinAmt').textContent=S.coins;
+  document.getElementById('statCards').textContent=totalCards();
+  document.getElementById('statWins').textContent=S.wins;
+  document.getElementById('statPacks').textContent=S.packsOpened;
+  // active quests preview
+  const hq=document.getElementById('homeQuests'); hq.innerHTML='';
+  ensureQuests();
+  S.quests.slice(0,3).forEach(q=>hq.appendChild(questEl(q)));
+}
+document.getElementById('claimDaily').onclick=()=>{
+  S.coins+=100; S.coinsEarned+=100; S.lastDaily=Date.now();
+  toast('+100 coins!','gold'); saveState(); renderHome();
+};
+
+/* ---------- COINS ---------- */
+function refreshUI(){ document.getElementById('coinAmt').textContent=S.coins; }
+function totalCards(){ return Object.values(S.collection).reduce((a,b)=>a+b,0); }
+function uniqueCards(){ return Object.keys(S.collection).length; }
+
+/* ---------- SHOP ---------- */
+function renderShop(){
+  const g=document.getElementById('packGrid'); g.innerHTML='';
+  const list = (typeof PACK_SETS!=='undefined' ? PACK_SETS : []);
+  if(!list.length){
+    g.innerHTML='<div class="muted">No packs available right now.</div>';
+    return;
+  }
+  const loadedSets = new Set(CARDS.map(c=>c.set));
+  list.forEach(p=>{
+    const ready = loadedSets.has(p.id);
+    const el=document.createElement('button');
+    el.className='pack era-'+(p.era||'').toLowerCase().replace(/\s+/g,'');
+    el.innerHTML=`<span class="price">${p.price} 🪙</span><span class="pname">${p.name}</span><span class="pera">${p.era||''}${ready?'':' • loading'}</span><span class="shine"></span>`;
+    el.onclick=()=>buyPack(p);
+    g.appendChild(el);
+  });
+}
+function buyPack(p){
+  if(S.coins<p.price){ toast('Not enough coins'); return; }
+  S.coins-=p.price; S.packsOpened++;
+  const pool=CARDS.filter(c=>c.set===p.id); if(pool.length<5){ toast('Pack pool not loaded yet — try again in a moment'); S.coins+=p.price; S.packsOpened--; return; }
+  const pulled=[];
+  // 4 commons/uncommons + 1 rare slot
+  const commons=pool.filter(c=>!/Rare|Holo|Ultra/i.test(c.rarity||''));
+  const rares=pool.filter(c=>/Rare|Holo|Ultra/i.test(c.rarity||''));
+  for(let i=0;i<4;i++) pulled.push(rand(commons.length?commons:pool));
+  const rarePool = rares.length?rares:pool;
+  // pull-rate: 8% ultra/holo if available
+  const ultras=rarePool.filter(c=>/Holo|Ultra/i.test(c.rarity));
+  pulled.push((Math.random()<0.15 && ultras.length)? rand(ultras): rand(rarePool));
+  pulled.forEach(c=>{ S.collection[c.id]=(S.collection[c.id]||0)+1; });
+  saveState();
+  showOpenedPack(pulled);
+  bumpQuest('open-pack',1);
+  checkAchievements();
+}
+function rand(a){ return a[Math.floor(Math.random()*a.length)]; }
+function showOpenedPack(cards){
+  const ov=document.getElementById('packOverlay'); const g=document.getElementById('openedGrid');
+  g.innerHTML='';
+  cards.forEach(c=>g.appendChild(cardEl(c,{showQty:false,holo:/Holo|Ultra/i.test(c.rarity)})));
+  ov.classList.add('show');
+}
+function closePack(){ document.getElementById('packOverlay').classList.remove('show'); refreshUI(); renderHome(); }
+
+/* ---------- CARD ELEMENT ---------- */
+function cardEl(card,opts={}){
+  const d=document.createElement('div');
+  const rarityCls = /Ultra/i.test(card.rarity)?'rare-ultra':(/Holo|Rare/i.test(card.rarity)?'rare-rare':'');
+  d.className='card '+rarityCls+(opts.holo?' holo':'');
+  if(card.images?.small){
+    const img=new Image(); img.loading='lazy'; img.src=card.images.small; img.alt=card.name;
+    img.onerror=()=>{ img.remove(); d.appendChild(fallbackArt(card)); };
+    d.appendChild(img);
+  } else {
+    d.appendChild(fallbackArt(card));
+  }
+  if(opts.showQty!==false){
+    const q=S.collection[card.id]||0;
+    if(q>0){ const b=document.createElement('span'); b.className='qty'; b.textContent='×'+q; d.appendChild(b); }
+  }
+  d.onclick=()=>showCardDetail(card);
+  return d;
+}
+function fallbackArt(card){
+  const f=document.createElement('div'); f.className='fallback';
+  const t=card.types?.[0]||'colorless';
+  f.style.background=`linear-gradient(160deg,var(--${t.toLowerCase()},#444),#111)`;
+  f.innerHTML=`<div class="name">${card.name}</div>${card.hp?`<div class="hp">HP ${card.hp}</div>`:''}`;
+  return f;
+}
+
+function showCardDetail(card){
+  const m=document.getElementById('cardModal'); const b=document.getElementById('cardModalBody');
+  const qty=S.collection[card.id]||0;
+  const sellPrice = /Ultra/i.test(card.rarity)?120:(/Holo|Rare/i.test(card.rarity)?40:10);
+  b.innerHTML=`
+    <button class="close" onclick="document.getElementById('cardModal').classList.remove('show')">×</button>
+    <div class="tilt-card" id="tiltC"></div>
+    <h2 style="margin-top:14px">${card.name}</h2>
+    <div class="muted">${card.supertype} · ${card.subtypes?.join(', ')||''} · ${card.rarity||'Common'}${card.hp?` · HP ${card.hp}`:''}</div>
+    ${card.types?.length?`<div style="margin:6px 0">${card.types.map(t=>`<span class="e ${t.toLowerCase()}">${t[0]}</span>`).join('')}</div>`:''}
+    ${(card.attacks||[]).map(a=>`<div class="panel" style="margin:8px 0;padding:10px"><b>${a.name}</b> — ${a.damage||0}<br><span class="muted">${a.cost.map(c=>`<span class="e ${c.toLowerCase()}">${c[0]}</span>`).join('')}${a.text||''}</span></div>`).join('')}
+    ${card.trainerEffect?`<div class="muted">${(card.rules||[]).join(' ')}</div>`:''}
+    <div class="row between" style="margin-top:12px">
+      <span>Owned: <b>${qty}</b></span>
+      <button class="btn small ${qty>0?'gold':''}" ${qty===0?'disabled':''} onclick="sellCard('${card.id}',${sellPrice})">Sell 1 for ${sellPrice} 🪙</button>
+    </div>`;
+  const tilt=b.querySelector('#tiltC');
+  if(card.images?.large||card.images?.small){
+    const img=new Image(); img.src=card.images.large||card.images.small; tilt.appendChild(img);
+  } else {
+    tilt.appendChild(fallbackArt(card));
+  }
+  m.classList.add('show');
+}
+function sellCard(id,price){
+  if(!S.collection[id]) return;
+  S.collection[id]--; if(!S.collection[id]) delete S.collection[id];
+  S.coins+=price; S.coinsEarned+=price;
+  toast('+'+price+' coins','gold');
+  saveState(); document.getElementById('cardModal').classList.remove('show'); renderBinder();
+}
+
+/* ---------- BINDER ---------- */
+let binderFilter='All';
+function renderBinder(){
+  const filters=['All','Pokémon','Trainer','Energy','Grass','Fire','Water','Lightning','Psychic','Fighting','Holo'];
+  const fb=document.getElementById('binderFilters'); fb.innerHTML='';
+  filters.forEach(f=>{
+    const p=document.createElement('span'); p.className='pill'+(f===binderFilter?' active':'');
+    p.textContent=f; p.onclick=()=>{binderFilter=f;renderBinder()};
+    fb.appendChild(p);
+  });
+  const search=(document.getElementById('binderSearch').value||'').toLowerCase();
+  const owned=Object.keys(S.collection).map(id=>CARDS_BY_ID[id]).filter(Boolean);
+  const filtered=owned.filter(c=>{
+    if(search && !c.name.toLowerCase().includes(search)) return false;
+    if(binderFilter==='All') return true;
+    if(['Pokémon','Trainer','Energy'].includes(binderFilter)) return c.supertype===binderFilter;
+    if(binderFilter==='Holo') return /Holo|Ultra/i.test(c.rarity);
+    return c.types?.includes(binderFilter);
+  });
+  document.getElementById('binderCount').textContent=`${filtered.length} unique · ${totalCards()} total`;
+  const g=document.getElementById('binderGrid'); g.innerHTML='';
+  filtered.forEach(c=>g.appendChild(cardEl(c,{holo:/Holo|Ultra/i.test(c.rarity)})));
+  if(!filtered.length) g.innerHTML='<div class="muted" style="grid-column:1/-1;padding:20px;text-align:center">No cards yet — open some packs!</div>';
+}
+document.getElementById('binderSearch').addEventListener('input',renderBinder);
+
+/* ---------- DECKS ---------- */
+function renderDecks(){
+  const dl=document.getElementById('deckList'); dl.innerHTML='';
+  if(!S.decks.length){ dl.innerHTML='<div class="muted">No decks yet. Build one!</div>'; return; }
+  S.decks.forEach((d,i)=>{
+    const total=d.cards.reduce((a,b)=>a+b.qty,0);
+    const legal=isDeckLegal(d).ok;
+    const el=document.createElement('div'); el.className='deck-list-item';
+    el.innerHTML=`<div style="flex:1"><b>${d.name}</b><br><span class="muted">${total}/60 cards · ${legal?'<span style="color:var(--green)">Legal</span>':'<span style="color:var(--red)">Illegal</span>'}</span></div>`;
+    const edit=document.createElement('button'); edit.className='btn small'; edit.textContent='Edit'; edit.onclick=()=>editDeck(i);
+    const del=document.createElement('button'); del.className='btn small danger'; del.textContent='✕'; del.onclick=()=>{if(confirm('Delete?')){S.decks.splice(i,1);saveState();renderDecks();}};
+    el.appendChild(edit); el.appendChild(del); dl.appendChild(el);
+  });
+}
+function newDeck(){
+  S.decks.push({name:'New Deck',cards:[]}); saveState();
+  editDeck(S.decks.length-1);
+}
+function editDeck(idx){
+  const d=S.decks[idx];
+  const owned=Object.keys(S.collection).map(id=>({card:CARDS_BY_ID[id],qty:S.collection[id]})).filter(x=>x.card);
+  const cur=()=>d.cards.reduce((a,b)=>a+b.qty,0);
+  const inDeck=id=>d.cards.find(x=>x.id===id)?.qty||0;
+  const html=`
+    <button class="close" onclick="closeModal()">×</button>
+    <input value="${d.name}" id="deckName" style="width:100%;padding:10px;border-radius:10px;background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.1);margin-bottom:10px"/>
+    <div class="muted" id="deckMeta"></div>
+    <h3 style="margin:10px 0 6px">In deck</h3>
+    <div id="inDeckList" class="grid cards"></div>
+    <h3 style="margin:14px 0 6px">Add from collection</h3>
+    <div id="ownedList" class="grid cards"></div>
+    <div style="height:14px"></div>
+    <button class="btn primary block" onclick="saveDeck(${idx})">Save deck</button>
+  `;
+  openModal(html,()=>{
+    const refresh=()=>{
+      document.getElementById('deckMeta').innerHTML=`${cur()}/60 · `+(isDeckLegal(d).ok?'<span style="color:var(--green)">Legal</span>':`<span style="color:var(--red)">${isDeckLegal(d).reason}</span>`);
+      const idl=document.getElementById('inDeckList'); idl.innerHTML='';
+      d.cards.forEach(c=>{
+        const card=CARDS_BY_ID[c.id]; if(!card) return;
+        const el=cardEl(card,{showQty:false});
+        const b=document.createElement('span'); b.className='qty'; b.textContent='×'+c.qty; el.appendChild(b);
+        el.onclick=()=>{ c.qty--; if(c.qty<=0) d.cards=d.cards.filter(x=>x.id!==c.id); refresh(); };
+        idl.appendChild(el);
+      });
+      const ol=document.getElementById('ownedList'); ol.innerHTML='';
+      owned.forEach(o=>{
+        const used=inDeck(o.card.id), remaining=o.qty-used;
+        if(remaining<=0) return;
+        const el=cardEl(o.card,{showQty:false});
+        const b=document.createElement('span'); b.className='qty'; b.textContent=remaining; el.appendChild(b);
+        el.onclick=()=>{
+          if(cur()>=60){toast('Deck full');return;}
+          const isBasicEnergy = o.card.supertype==='Energy';
+          const existing=d.cards.find(x=>x.id===o.card.id);
+          if(existing){
+            if(!isBasicEnergy && existing.qty>=4){toast('Max 4 of same card');return;}
+            existing.qty++;
+          } else d.cards.push({id:o.card.id,qty:1});
+          refresh();
+        };
+        ol.appendChild(el);
+      });
+    };
+    refresh();
+  });
+}
+function saveDeck(idx){
+  S.decks[idx].name=document.getElementById('deckName').value||'Deck';
+  saveState(); closeModal(); renderDecks();
+}
+function isDeckLegal(d){
+  const total=d.cards.reduce((a,b)=>a+b.qty,0);
+  if(total!==60) return {ok:false,reason:`Need 60 cards (have ${total})`};
+  const hasBasicPokemon=d.cards.some(c=>{
+    const card=CARDS_BY_ID[c.id]; return card?.supertype==='Pokémon'&&(card.subtypes||[]).includes('Basic');
+  });
+  if(!hasBasicPokemon) return {ok:false,reason:'Need ≥1 Basic Pokémon'};
+  for(const c of d.cards){
+    const card=CARDS_BY_ID[c.id];
+    if(!card) return {ok:false,reason:'Unknown card'};
+    if(card.supertype!=='Energy' && c.qty>4) return {ok:false,reason:'Max 4 of '+card.name};
+  }
+  return {ok:true};
+}
+
+/* ============================================================
+   BATTLE ENGINE
+   ============================================================ */
+let B = null; // current battle state
+
+function renderBattleHome(){
+  document.getElementById('battleHome').style.display='block';
+  document.getElementById('battleArea').style.display='none';
+  const dp=document.getElementById('battleDeckPicker'); dp.innerHTML='';
+  const legalDecks = S.decks.filter(d=>isDeckLegal(d).ok);
+  if(!legalDecks.length){
+    dp.innerHTML='<div class="muted">No legal decks. Build a 60-card deck in the Decks tab.</div>';
+    const sd=document.createElement('button'); sd.className='btn gold block'; sd.style.marginTop='8px';
+    sd.textContent='Auto-build a deck for me';
+    sd.onclick=()=>autoBuildDeck();
+    dp.appendChild(sd);
+    return;
+  }
+  legalDecks.forEach((d,i)=>{
+    const b=document.createElement('button'); b.className='btn block'; b.style.marginBottom='8px';
+    b.textContent='⚔️ Battle with: '+d.name;
+    b.onclick=()=>startBattle(d);
+    dp.appendChild(b);
+  });
+}
+
+function showLoading(text, sub){
+  const o=document.getElementById('loadingOverlay');
+  if(!o) return;
+  document.getElementById('loadingText').textContent = text || 'Working…';
+  document.getElementById('loadingSub').textContent  = sub  || 'Please wait a moment';
+  o.style.display='flex';
+}
+function hideLoading(){
+  const o=document.getElementById('loadingOverlay');
+  if(o) o.style.display='none';
+}
+// Yield to the browser so the loading overlay paints before heavy work runs.
+function nextFrame(){ return new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0))); }
+
+async function autoBuildDeck(){
+  showLoading('Building your deck…','Picking Pokémon, trainers and energies');
+  await nextFrame();
+  try{
+    const deck={name:'Auto Starter',cards:[]};
+    const addCard=(c, max=4)=>{
+      if(!c) return false;
+      const total=deck.cards.reduce((a,b)=>a+b.qty,0);
+      if(total>=60) return false;
+      const e=deck.cards.find(x=>x.id===c.id);
+      const cap = c.supertype==='Energy' ? 60 : max;
+      if(e){ if(e.qty>=cap) return false; e.qty++; } else { deck.cards.push({id:c.id,qty:1}); }
+      S.collection[c.id]=Math.max(S.collection[c.id]||0, deck.cards.find(x=>x.id===c.id).qty);
+      return true;
+    };
+
+    // Preferred fallback names first (work great with the offline starter set)
+    const wanted=['Pikachu','Pikachu','Pikachu','Pikachu','Charmander','Charmander','Charmander','Bulbasaur','Bulbasaur','Squirtle','Squirtle','Mewtwo','Eevee','Eevee','Pidgey','Pidgey','Rattata','Caterpie','Magikarp','Abra','Potion','Potion','Switch','Switch',"Professor's Research","Professor's Research",'Energy Search','Energy Search'];
+    wanted.forEach(n=>{
+      const c=CARDS.find(x=>x.name===n);
+      if(c) addCard(c);
+    });
+
+    // If we don't have many cards yet (real API set loaded), top up with any Basic Pokémon
+    if(deck.cards.reduce((a,b)=>a+b.qty,0) < 24){
+      const basics=CARDS.filter(c=>c.supertype==='Pokémon' && (c.subtypes||[]).includes('Basic') && c.attacks?.length);
+      let guard=0;
+      while(deck.cards.reduce((a,b)=>a+b.qty,0) < 28 && basics.length && guard++<400){
+        addCard(basics[Math.floor(Math.random()*basics.length)]);
+      }
+    }
+
+    // Fill the rest with energies — fall back broadly so we never loop forever.
+    const energyPrefs=['Lightning','Fire','Water','Grass','Psychic','Fighting','Colorless'];
+    const allEnergies = CARDS.filter(c=>c.supertype==='Energy');
+    let ei=0, guard=0;
+    while(deck.cards.reduce((a,b)=>a+b.qty,0)<60 && guard++<2000){
+      let c=null;
+      const t=energyPrefs[ei++ % energyPrefs.length];
+      c = allEnergies.find(x=>x.energyType===t)
+       || allEnergies.find(x=>new RegExp(t,'i').test(x.name||''))
+       || allEnergies[Math.floor(Math.random()*allEnergies.length)] || null;
+      if(!c) break;
+      addCard(c);
+      if(guard%50===0) await nextFrame(); // keep UI responsive
+    }
+
+    // Final safety: pad with any card so we always reach 60 (avoids freeze)
+    let pad=0;
+    while(deck.cards.reduce((a,b)=>a+b.qty,0)<60 && CARDS.length && pad++<500){
+      addCard(CARDS[Math.floor(Math.random()*CARDS.length)], 60);
+    }
+
+    if(deck.cards.reduce((a,b)=>a+b.qty,0) < 10){
+      toast('Card library still loading — try again in a moment','gold');
+      return;
+    }
+
+    S.decks.push(deck); saveState();
+    toast('Built starter deck!','gold');
+    renderBattleHome();
+  } catch(err){
+    console.error('autoBuildDeck failed', err);
+    toast('Could not build deck — please try again');
+  } finally {
+    hideLoading();
+  }
+}
+
+function startBattle(deck){
+  document.getElementById('battleHome').style.display='none';
+  document.getElementById('battleArea').style.display='block';
+
+  const playerDeck=expandDeck(deck);
+  const botDeck=buildBotDeck();
+  shuffle(playerDeck); shuffle(botDeck);
+
+  B={
+    turn:1, phase:'setup', current:'player',
+    player:{deck:playerDeck,hand:[],active:null,bench:[],discard:[],prizes:6,energyAttachedThisTurn:false},
+    bot:   {deck:botDeck,   hand:[],active:null,bench:[],discard:[],prizes:6,energyAttachedThisTurn:false},
+    log:[]
+  };
+  // draw 7 each
+  for(let i=0;i<7;i++){ B.player.hand.push(B.player.deck.pop()); B.bot.hand.push(B.bot.deck.pop()); }
+  // setup actives - both must place a basic
+  setupActive(B.player); setupActive(B.bot);
+  // place a couple bench
+  setupBench(B.player); setupBench(B.bot);
+
+  log('sys','Battle start! Coin flip for first turn…');
+  flipCoin().then(heads=>{
+    B.current = heads ? 'player' : 'bot';
+    log('sys', (heads?'You':'Bot')+' go first');
+    renderBattle();
+    if(B.current==='bot') setTimeout(botTurn,800);
+  });
+}
+function expandDeck(d){
+  const out=[];
+  d.cards.forEach(c=>{ for(let i=0;i<c.qty;i++) out.push(makeInstance(CARDS_BY_ID[c.id])); });
+  return out;
+}
+function buildBotDeck(){
+  // Use a curated mix from current card pool
+  const basics = CARDS.filter(c=>c.supertype==='Pokémon'&&(c.subtypes||[]).includes('Basic')&&c.attacks?.length);
+  const energies = CARDS.filter(c=>c.supertype==='Energy');
+  const trainers = CARDS.filter(c=>c.supertype==='Trainer');
+  const deck=[];
+  for(let i=0;i<20;i++) deck.push(makeInstance(rand(basics)));
+  for(let i=0;i<6;i++) if(trainers.length) deck.push(makeInstance(rand(trainers)));
+  while(deck.length<60) deck.push(makeInstance(rand(energies.length?energies:basics)));
+  return deck;
+}
+function makeInstance(card){
+  return {id:card.id, card, damage:0, energy:[], status:null, statusTurns:0, evolvedFrom:null};
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
+function setupActive(side){
+  const idx=side.hand.findIndex(i=>i.card.supertype==='Pokémon'&&(i.card.subtypes||[]).includes('Basic'));
+  if(idx>=0){ side.active=side.hand.splice(idx,1)[0]; }
+  else { // mulligan: shuffle and redraw
+    side.deck=side.deck.concat(side.hand); side.hand=[]; shuffle(side.deck);
+    for(let i=0;i<7;i++) side.hand.push(side.deck.pop());
+    setupActive(side);
+  }
+}
+function setupBench(side){
+  // place up to 2 basics on bench
+  for(let i=0;i<2;i++){
+    const idx=side.hand.findIndex(x=>x.card.supertype==='Pokémon'&&(x.card.subtypes||[]).includes('Basic'));
+    if(idx<0) break;
+    side.bench.push(side.hand.splice(idx,1)[0]);
+  }
+}
+
+function log(who,msg){ B.log.push({who,msg}); }
+
+/* ---------- COIN FLIP ---------- */
+function flipCoin(){
+  return new Promise(res=>{
+    const wrap=document.createElement('div'); wrap.className='overlay show';
+    wrap.style.background='rgba(0,0,0,.6)';
+    wrap.innerHTML='<div class="coin-flip flipping" id="cf">?</div><div style="color:#fff;font-weight:800">Flipping…</div>';
+    document.body.appendChild(wrap);
+    setTimeout(()=>{
+      const heads=Math.random()<0.5;
+      wrap.querySelector('#cf').textContent=heads?'H':'T';
+      wrap.querySelector('#cf').style.background = heads?'var(--grad-gold)':'linear-gradient(135deg,#888,#444)';
+      setTimeout(()=>{ wrap.remove(); res(heads); }, 700);
+    }, 1100);
+  });
+}
+
+/* ---------- RENDER BATTLE ---------- */
+function renderBattle(){
+  const a=document.getElementById('battleArea');
+  a.innerHTML=`
+    <div class="board">
+      <div class="side">
+        <div class="row between"><span class="label">Bot · ${B.bot.deck.length} deck · ${B.bot.hand.length} hand</span>
+          <div class="prizes" id="botPrizes"></div></div>
+        <div class="bench" id="botBench"></div>
+        <div class="active-area" id="botActive"></div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--ink-mute)">Turn ${B.turn} — ${B.current==='player'?'Your turn':'Bot turn'}</div>
+      <div class="side">
+        <div class="active-area" id="playerActive"></div>
+        <div class="bench" id="playerBench"></div>
+        <div class="row between"><span class="label">You · ${B.player.deck.length} deck</span>
+          <div class="prizes" id="playerPrizes"></div></div>
+      </div>
+    </div>
+
+    <div style="height:8px"></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">
+      ${B.current==='player'?`
+        <button class="btn small primary" onclick="endTurn()">End turn</button>
+        <button class="btn small" onclick="attemptRetreat()">Retreat</button>
+      `:'<span class="muted">Bot is thinking…</span>'}
+    </div>
+    <div style="height:8px"></div>
+    <h3 style="margin:6px 0">Hand</h3>
+    <div class="hand" id="playerHand"></div>
+    <h3 style="margin:6px 0">Battle Log</h3>
+    <div class="battle-log" id="battleLog"></div>
+    <div style="height:10px"></div>
+    <button class="btn small danger" onclick="forfeit()">Forfeit</button>
+  `;
+  // prizes
+  const renderPrizes=(id,n)=>{
+    const el=document.getElementById(id); el.innerHTML='';
+    for(let i=0;i<6;i++){ const p=document.createElement('div'); p.className='prize'+(i>=n?' taken':''); el.appendChild(p);}
+  };
+  renderPrizes('botPrizes',B.bot.prizes);
+  renderPrizes('playerPrizes',B.player.prizes);
+  // bench/active
+  renderSlots('botBench',B.bot.bench,'bot');
+  renderSlots('playerBench',B.player.bench,'player');
+  renderActive('botActive',B.bot,'bot');
+  renderActive('playerActive',B.player,'player');
+  // hand
+  const h=document.getElementById('playerHand'); h.innerHTML='';
+  B.player.hand.forEach((inst,i)=>{
+    const el=cardEl(inst.card,{showQty:false});
+    el.onclick=()=>handAction(i);
+    h.appendChild(el);
+  });
+  // log
+  const lg=document.getElementById('battleLog'); lg.innerHTML='';
+  B.log.slice(-30).forEach(e=>{const p=document.createElement('p'); p.className=e.who; p.textContent=e.msg; lg.appendChild(p);});
+  lg.scrollTop=lg.scrollHeight;
+}
+function renderSlots(id,arr,side){
+  const el=document.getElementById(id); el.innerHTML='';
+  for(let i=0;i<5;i++){
+    const inst=arr[i];
+    const s=document.createElement('div'); s.className='slot'+(inst?' has':'');
+    if(inst){
+      const img=inst.card.images?.small;
+      if(img){ const im=new Image(); im.src=img; im.onerror=()=>im.remove(); s.appendChild(im); }
+      else s.appendChild(fallbackArt(inst.card));
+      const hp=document.createElement('div'); hp.className='hpbar';
+      const fill=document.createElement('div'); fill.style.width=Math.max(0,100-(inst.damage*100/(inst.card.hp||60)))+'%';
+      hp.appendChild(fill); s.appendChild(hp);
+      const en=document.createElement('div'); en.className='energy';
+      inst.energy.slice(0,4).forEach(e=>{const sp=document.createElement('span'); sp.style.background=`var(--${e.toLowerCase()},#888)`; en.appendChild(sp);});
+      s.appendChild(en);
+      if(inst.status){ const st=document.createElement('div'); st.className='status'; st.textContent=statusEmoji(inst.status); s.appendChild(st);}
+      if(side==='player'&&B.current==='player') s.onclick=()=>swapBenchToActive(i);
+    } else { s.textContent='—'; }
+    el.appendChild(s);
+  }
+}
+function renderActive(id,side,who){
+  const el=document.getElementById(id); el.innerHTML='';
+  const s=document.createElement('div'); s.className='slot active'+(side.active?' has':'');
+  if(side.active){
+    const inst=side.active;
+    if(inst.card.images?.small){ const im=new Image(); im.src=inst.card.images.small; s.appendChild(im); }
+    else s.appendChild(fallbackArt(inst.card));
+    const hp=document.createElement('div'); hp.className='hpbar';
+    const fill=document.createElement('div'); fill.style.width=Math.max(0,100-(inst.damage*100/(inst.card.hp||60)))+'%';
+    hp.appendChild(fill); s.appendChild(hp);
+    const en=document.createElement('div'); en.className='energy';
+    inst.energy.forEach(e=>{const sp=document.createElement('span'); sp.style.background=`var(--${e.toLowerCase()},#888)`; en.appendChild(sp);});
+    s.appendChild(en);
+    if(inst.status){ const st=document.createElement('div'); st.className='status'; st.textContent=statusEmoji(inst.status); s.appendChild(st);}
+  } else { s.textContent='No active'; }
+  el.appendChild(s);
+
+  // attacks panel for player active on player's turn
+  if(who==='player'&&B.current==='player'&&side.active){
+    const ap=document.createElement('div'); ap.style.flex='1';
+    (side.active.card.attacks||[]).forEach((atk,i)=>{
+      const can = canPayCost(side.active.energy, atk.cost);
+      const b=document.createElement('button'); b.className='btn small '+(can?'primary':''); b.style.margin='2px';
+      b.textContent=`${atk.name} (${atk.damage||0})`;
+      b.disabled=!can || side.active.status==='Asleep'||side.active.status==='Paralyzed';
+      b.onclick=()=>useAttack(i);
+      ap.appendChild(b);
+    });
+    el.appendChild(ap);
+  }
+}
+function statusEmoji(s){ return {'Asleep':'💤','Poisoned':'☠️','Burned':'🔥','Paralyzed':'⚡','Confused':'❓'}[s]||''; }
+
+/* ---------- ENERGY / ACTIONS ---------- */
+function canPayCost(have, cost){
+  // Cost like ['Lightning','Lightning','Colorless']
+  const pool=[...have];
+  for(const c of cost){
+    if(c==='Colorless'){ if(pool.length===0) return false; pool.pop(); }
+    else { const i=pool.indexOf(c); if(i<0) return false; pool.splice(i,1); }
+  }
+  return true;
+}
+
+function handAction(idx){
+  const inst=B.player.hand[idx]; if(!inst) return;
+  const c=inst.card;
+  if(c.supertype==='Energy'){
+    if(B.player.energyAttachedThisTurn){ toast('Already attached energy this turn'); return; }
+    // attach to active
+    B.player.active.energy.push(c.energyType||c.types?.[0]||'Colorless');
+    B.player.energyAttachedThisTurn=true;
+    B.player.hand.splice(idx,1);
+    log('you','Attached '+c.name);
+    renderBattle();
+    return;
+  }
+  if(c.supertype==='Pokémon'){
+    if((c.subtypes||[]).includes('Basic')){
+      if(B.player.bench.length>=5){ toast('Bench full'); return; }
+      B.player.bench.push(B.player.hand.splice(idx,1)[0]);
+      log('you','Benched '+c.name);
+      renderBattle(); return;
+    }
+    // evolution
+    if(B.turn===1){ toast('Cannot evolve turn 1'); return; }
+    const evolveTarget=findEvolutionTarget(B.player,c.evolvesFrom);
+    if(!evolveTarget){ toast('Need '+c.evolvesFrom+' in play'); return; }
+    evolveTarget.card=c; evolveTarget.evolvedFrom=c.evolvesFrom;
+    evolveTarget.status=null; // evolution clears status
+    B.player.hand.splice(idx,1);
+    log('you','Evolved into '+c.name);
+    renderBattle(); return;
+  }
+  if(c.supertype==='Trainer'){
+    playTrainer(B.player,c,inst);
+    B.player.hand.splice(idx,1);
+    renderBattle(); return;
+  }
+}
+function findEvolutionTarget(side,fromName){
+  if(!fromName) return null;
+  if(side.active?.card.name===fromName) return side.active;
+  return side.bench.find(b=>b.card.name===fromName)||null;
+}
+function playTrainer(side,c){
+  switch(c.trainerEffect){
+    case 'potion': if(side.active){ side.active.damage=Math.max(0,side.active.damage-30); log('you','Potion: -30 damage'); } break;
+    case 'switch': if(side.bench.length){
+      const old=side.active; side.active=side.bench.shift(); side.bench.push(old);
+      log('you','Switch active'); } break;
+    case 'prof-research':
+      side.discard=side.discard.concat(side.hand); side.hand=[];
+      for(let i=0;i<5&&side.deck.length;i++) side.hand.push(side.deck.pop());
+      log('you','Professor\'s Research: drew 5'); break;
+    case 'energy-search':
+      const ei=side.deck.findIndex(x=>x.card.supertype==='Energy');
+      if(ei>=0){ side.hand.push(side.deck.splice(ei,1)[0]); shuffle(side.deck); log('you','Searched energy'); }
+      break;
+    default: log('you','Played '+c.name);
+  }
+}
+
+function swapBenchToActive(i){
+  // move bench[i] to active (used as click on bench during your turn)
+  if(B.current!=='player') return;
+  const choice=confirm('Swap '+(B.player.bench[i].card.name)+' to Active? (Costs retreat energy)');
+  if(!choice) return;
+  retreatTo(i);
+}
+function attemptRetreat(){
+  if(!B.player.bench.length){ toast('No bench Pokémon'); return; }
+  const list = B.player.bench.map((b,i)=>i+': '+b.card.name).join('\n');
+  const idx=parseInt(prompt('Retreat to which bench slot?\n'+list),10);
+  if(isNaN(idx)) return;
+  retreatTo(idx);
+}
+function retreatTo(i){
+  const cost=(B.player.active.card.retreatCost||[]).length;
+  if(B.player.active.energy.length<cost){ toast('Not enough energy to retreat'); return; }
+  for(let k=0;k<cost;k++) B.player.active.energy.pop();
+  if(B.player.active.status==='Paralyzed'||B.player.active.status==='Asleep') B.player.active.status=null;
+  const old=B.player.active;
+  B.player.active=B.player.bench[i];
+  B.player.bench.splice(i,1,old);
+  log('you','Retreated to '+B.player.active.card.name);
+  renderBattle();
+}
+
+/* ---------- ATTACK ---------- */
+async function useAttack(i){
+  const atk=B.player.active.card.attacks[i];
+  if(!canPayCost(B.player.active.energy, atk.cost)){ toast('Not enough energy'); return; }
+  // Confusion check
+  if(B.player.active.status==='Confused'){
+    log('sys','Confused: flipping coin…');
+    const heads=await flipCoin();
+    if(!heads){
+      log('you','Tails — attack failed, 30 dmg to self');
+      B.player.active.damage+=30;
+      await maybeKO(B.player,B.bot,'player');
+      return endTurn();
+    }
+  }
+  await performAttack('player',B.bot,atk);
+  if(B.current==='player') endTurn();
+}
+async function performAttack(side, defenderSide, atk){
+  const attacker = side==='player'?B.player:B.bot;
+  const defender = defenderSide;
+  let dmg = parseInt((atk.damage||'0').replace(/\D/g,''),10)||0;
+  // flip-based effects
+  let inflict=null;
+  if(atk.flip){
+    const heads=await flipCoin();
+    if(atk.flip.includes('paralyze')) inflict = (atk.flip.includes('on-heads')?(heads?'Paralyzed':null):(heads?null:'Paralyzed'));
+    if(atk.flip.includes('poison')) inflict = (heads?'Poisoned':null);
+    if(atk.flip.includes('sleep')) inflict = (heads?'Asleep':null);
+    if(atk.flip.includes('confuse')) inflict = (heads?'Confused':null);
+    if(atk.flip.includes('burn')) inflict = (heads?'Burned':null);
+  }
+  // weakness/resistance
+  const def=defender.active;
+  if(def && dmg>0){
+    const atkType=attacker.active.card.types?.[0];
+    if(atkType && (def.card.weaknesses||[]).some(w=>w.type===atkType)) dmg*=2;
+    if(atkType && (def.card.resistances||[]).some(r=>r.type===atkType)) dmg=Math.max(0,dmg-30);
+  }
+  if(def){
+    def.damage += dmg;
+    log(side==='player'?'you':'bot',`${attacker.active.card.name} used ${atk.name}: ${dmg} dmg`);
+    if(inflict){ def.status=inflict; def.statusTurns=0; log('sys','Inflicted '+inflict); S.inflictedStatuses++; bumpQuest('inflict-status',1); }
+    // attack effects
+    if(atk.effect==='discard-all-energy') attacker.active.energy=[];
+    if(atk.effect==='discard-2-energy') attacker.active.energy.splice(0,2);
+    if(atk.effect==='self-20') attacker.active.damage+=20;
+    await maybeKO(defender, attacker, side==='player'?'bot':'player');
+    if(B.player.active && attacker===B.player) await maybeKO(B.player,B.bot,'player');
+  }
+  renderBattle();
+}
+async function maybeKO(side, attackerSide, sideName){
+  if(!side.active) return;
+  if(side.active.damage >= (side.active.card.hp||60)){
+    log('sys',side.active.card.name+' was knocked out!');
+    side.discard.push(side.active);
+    side.active=null;
+    // attacker takes a prize
+    attackerSide.prizes--;
+    if(attackerSide.prizes<=0){ return endBattle(attackerSide===B.player?'player':'bot'); }
+    // promote bench
+    if(side.bench.length){
+      side.active=side.bench.shift();
+    } else {
+      return endBattle(attackerSide===B.player?'player':'bot');
+    }
+  }
+}
+
+/* ---------- TURN / STATUS ---------- */
+function endTurn(){
+  if(B.current!=='player') return;
+  applyEndTurnStatus(B.player);
+  B.current='bot';
+  B.bot.energyAttachedThisTurn=false;
+  if(B.bot.deck.length){ B.bot.hand.push(B.bot.deck.pop()); }
+  renderBattle();
+  setTimeout(botTurn, 700);
+}
+function applyEndTurnStatus(side){
+  if(!side.active) return;
+  if(side.active.status==='Poisoned'){ side.active.damage+=10; log('sys',side.active.card.name+' took 10 poison'); }
+  if(side.active.status==='Burned'){
+    side.active.damage+=20; log('sys',side.active.card.name+' took 20 burn');
+    // 50% to remove
+    if(Math.random()<0.5){ side.active.status=null; log('sys','Burn removed'); }
+  }
+  maybeKO(side, side===B.player?B.bot:B.player, side===B.player?'bot':'player');
+}
+
+async function botTurn(){
+  if(!B || B.current!=='bot') return;
+  // draw
+  if(B.bot.deck.length) B.bot.hand.push(B.bot.deck.pop());
+  // sleep / paralysis
+  if(B.bot.active?.status==='Asleep'){
+    const heads=await flipCoin();
+    if(heads){ B.bot.active.status=null; log('sys','Bot woke up'); }
+    else { log('sys','Bot still asleep'); B.current='player'; B.player.energyAttachedThisTurn=false; B.turn++; if(B.player.deck.length)B.player.hand.push(B.player.deck.pop()); renderBattle(); return;}
+  }
+  if(B.bot.active?.status==='Paralyzed'){
+    log('sys','Bot is paralyzed and skips attack');
+    B.bot.active.status=null;
+    applyEndTurnStatus(B.bot);
+    B.current='player'; B.turn++; B.player.energyAttachedThisTurn=false;
+    if(B.player.deck.length)B.player.hand.push(B.player.deck.pop());
+    renderBattle(); return;
+  }
+  // play basics from hand to bench
+  for(let i=B.bot.hand.length-1;i>=0;i--){
+    const c=B.bot.hand[i].card;
+    if(c.supertype==='Pokémon'&&(c.subtypes||[]).includes('Basic')&&B.bot.bench.length<5){
+      B.bot.bench.push(B.bot.hand.splice(i,1)[0]); log('bot','Bot benched '+c.name);
+    }
+  }
+  // try evolve
+  if(B.turn>1){
+    for(let i=B.bot.hand.length-1;i>=0;i--){
+      const c=B.bot.hand[i].card;
+      if(c.supertype==='Pokémon'&&!((c.subtypes||[]).includes('Basic'))){
+        const tgt=findEvolutionTarget(B.bot,c.evolvesFrom);
+        if(tgt){ tgt.card=c; tgt.status=null; B.bot.hand.splice(i,1); log('bot','Bot evolved into '+c.name); break;}
+      }
+    }
+  }
+  // attach energy to active
+  if(!B.bot.energyAttachedThisTurn && B.bot.active){
+    const ei=B.bot.hand.findIndex(x=>x.card.supertype==='Energy');
+    if(ei>=0){ B.bot.active.energy.push(B.bot.hand[ei].card.energyType||'Colorless'); B.bot.hand.splice(ei,1); B.bot.energyAttachedThisTurn=true; log('bot','Bot attached energy');}
+  }
+  // play a trainer occasionally
+  const ti=B.bot.hand.findIndex(x=>x.card.supertype==='Trainer');
+  if(ti>=0 && Math.random()<0.5){ const c=B.bot.hand[ti].card; playTrainerForBot(c); B.bot.hand.splice(ti,1); }
+  // pick best attack
+  if(B.bot.active){
+    const attacks=B.bot.active.card.attacks||[];
+    let best=null,bestDmg=-1;
+    for(const a of attacks){
+      if(canPayCost(B.bot.active.energy,a.cost)){
+        const d=parseInt((a.damage||'0').replace(/\D/g,''),10)||0;
+        if(d>bestDmg){bestDmg=d;best=a;}
+      }
+    }
+    if(best){
+      await performAttack('bot',B.player,best);
+    } else log('bot','Bot has no usable attack');
+  }
+  applyEndTurnStatus(B.bot);
+  if(!B) return;
+  B.current='player'; B.turn++; B.player.energyAttachedThisTurn=false;
+  if(B.player.deck.length===0){ return endBattle('bot'); }
+  B.player.hand.push(B.player.deck.pop());
+  renderBattle();
+}
+function playTrainerForBot(c){
+  switch(c.trainerEffect){
+    case 'potion': if(B.bot.active) B.bot.active.damage=Math.max(0,B.bot.active.damage-30); log('bot','Bot used Potion'); break;
+    case 'switch': if(B.bot.bench.length){const o=B.bot.active;B.bot.active=B.bot.bench.shift();B.bot.bench.push(o);log('bot','Bot switched');} break;
+    case 'prof-research': B.bot.discard=B.bot.discard.concat(B.bot.hand); B.bot.hand=[]; for(let i=0;i<5&&B.bot.deck.length;i++)B.bot.hand.push(B.bot.deck.pop()); log('bot','Bot: Professor\'s Research'); break;
+    case 'energy-search': const i=B.bot.deck.findIndex(x=>x.card.supertype==='Energy'); if(i>=0){B.bot.hand.push(B.bot.deck.splice(i,1)[0]);shuffle(B.bot.deck);log('bot','Bot searched energy');} break;
+  }
+}
+
+function endBattle(winner){
+  if(winner==='player'){
+    S.wins++;
+    const reward=80;
+    S.coins+=reward; S.coinsEarned+=reward;
+    bumpQuest('win-battle',1);
+    openModal(`<h2>🏆 Victory!</h2><div class="muted">You won the match.</div><div style="margin:14px 0;font-size:24px;font-weight:800;color:var(--gold)">+${reward} 🪙</div><button class="btn primary block" onclick="closeModal();renderBattleHome()">Continue</button>`);
+  } else {
+    S.losses++;
+    openModal(`<h2>💔 Defeat</h2><div class="muted">Better luck next time!</div><button class="btn block" onclick="closeModal();renderBattleHome()" style="margin-top:14px">Continue</button>`);
+  }
+  saveState(); checkAchievements();
+  B=null;
+}
+function forfeit(){ if(confirm('Forfeit match?')) endBattle('bot'); }
+
+/* ============================================================
+   QUESTS & ACHIEVEMENTS
+   ============================================================ */
+const QUEST_TEMPLATES=[
+  {id:'open-pack',text:'Open booster packs',target:2,reward:50},
+  {id:'win-battle',text:'Win battles',target:1,reward:80},
+  {id:'inflict-status',text:'Inflict status effects',target:3,reward:40},
+  {id:'collect-cards',text:'Collect new unique cards',target:5,reward:60},
+];
+function ensureQuests(){
+  const today=new Date().toDateString();
+  if(!S.quests.length || S.quests[0].day!==today){
+    S.quests = QUEST_TEMPLATES.map(q=>({...q,day:today,progress:0,done:false}));
+    saveState();
+  }
+}
+function bumpQuest(id,n){
+  ensureQuests();
+  S.quests.forEach(q=>{
+    if(q.id===id && !q.done){
+      q.progress=Math.min(q.target,q.progress+n);
+      if(q.progress>=q.target){
+        q.done=true; S.coins+=q.reward; S.coinsEarned+=q.reward;
+        toast('Quest complete! +'+q.reward+' 🪙','gold');
+      }
+    }
+  });
+  saveState();
+}
+function questEl(q){
+  const d=document.createElement('div'); d.className='quest'+(q.done?' done':'');
+  d.innerHTML=`<div style="flex:1"><div style="font-weight:600">${q.text} (${q.progress}/${q.target})</div>
+    <div class="progress"><div style="width:${q.progress*100/q.target}%"></div></div></div>
+    <span class="reward">${q.done?'✓':q.reward+' 🪙'}</span>`;
+  return d;
+}
+function renderQuests(){
+  ensureQuests();
+  const dq=document.getElementById('dailyQuests'); dq.innerHTML='';
+  S.quests.forEach(q=>dq.appendChild(questEl(q)));
+  const al=document.getElementById('achievementsList'); al.innerHTML='';
+  ACHIEVEMENTS.forEach(a=>{
+    const got=S.achievements.includes(a.id);
+    const d=document.createElement('div'); d.className='quest'+(got?' done':'');
+    d.innerHTML=`<div style="flex:1"><div style="font-weight:600">${a.icon} ${a.name}</div><div class="muted">${a.desc}</div></div>
+      <span class="reward">${got?'✓':a.reward+' 🪙'}</span>`;
+    al.appendChild(d);
+  });
+}
+const ACHIEVEMENTS=[
+  {id:'first-pack',name:'First Pull',desc:'Open your first pack',reward:50,icon:'📦',check:s=>s.packsOpened>=1},
+  {id:'pack-10',name:'Collector',desc:'Open 10 packs',reward:200,icon:'📚',check:s=>s.packsOpened>=10},
+  {id:'win-1',name:'First Victory',desc:'Win your first battle',reward:100,icon:'🥇',check:s=>s.wins>=1},
+  {id:'win-10',name:'Veteran Trainer',desc:'Win 10 battles',reward:500,icon:'🏆',check:s=>s.wins>=10},
+  {id:'cards-50',name:'Binder Builder',desc:'Collect 50 unique cards',reward:200,icon:'🗂️',check:s=>uniqueCards()>=50},
+  {id:'pull-charizard',name:'Lizard King',desc:'Pull a Charizard',reward:300,icon:'🔥',check:s=>Object.keys(s.collection).some(id=>CARDS_BY_ID[id]?.name==='Charizard')},
+];
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(a=>{
+    if(!S.achievements.includes(a.id) && a.check(S)){
+      S.achievements.push(a.id); S.coins+=a.reward; S.coinsEarned+=a.reward;
+      toast('🏆 '+a.name+' +'+a.reward+'🪙','gold');
+    }
+  });
+  saveState();
+}
+
+/* ---------- PROFILE ---------- */
+function renderProfile(){
+  document.getElementById('pStatWins').textContent=S.wins;
+  document.getElementById('pStatLosses').textContent=S.losses;
+  document.getElementById('pStatCards').textContent=totalCards();
+  document.getElementById('pStatUnique').textContent=uniqueCards();
+  document.getElementById('pStatPacks').textContent=S.packsOpened;
+  document.getElementById('pStatCoins').textContent=S.coinsEarned;
+  // favorite type
+  const tally={};
+  Object.keys(S.collection).forEach(id=>{
+    const c=CARDS_BY_ID[id]; if(!c) return;
+    (c.types||[]).forEach(t=>{ tally[t]=(tally[t]||0)+S.collection[id]; });
+  });
+  const fav=Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('pStatType').textContent= fav?fav[0]:'—';
+}
+function resetGame(){
+  if(!confirm('This wipes your collection, coins, decks, everything. Continue?')) return;
+  localStorage.removeItem(LS_KEY); S=loadState(); saveState();
+  toast('Game reset'); nav('home');
+}
+
+/* ---------- BOOT ---------- */
+(async function boot(){
+  await ensureCards();
+  refreshUI();
+  renderHome();
+})();
+</script>
+</body>
+</html>
